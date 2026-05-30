@@ -233,15 +233,19 @@ export function OceanScene() {
         </div>
       )}
 
-      {/* Zero-state hint near the surface */}
+      {/* Zero-state hint — placed just below the surface, in the water,
+          so it never collides with hero CTAs on small screens. */}
       {hydrated && launches === 0 && (
         <div
           className="absolute inset-x-0 z-10 pointer-events-none flex justify-center px-4"
-          style={{ top: surfaceY - 64 }}
+          style={{ top: surfaceY + Math.round((sandY - surfaceY) * 0.18) }}
         >
-          <div className="glass rounded-full px-4 py-2 text-xs sm:text-sm text-[var(--ink)] flex items-center gap-2 launch-hint">
+          <div
+            className="rounded-full px-3.5 py-2 text-[11px] sm:text-sm text-[var(--ink)] flex items-center gap-2 launch-hint border border-white/70 shadow-[0_10px_28px_-8px_rgba(8,40,80,0.45)] max-w-[92vw] text-center"
+            style={{ background: "rgba(255,255,255,0.92)" }}
+          >
             <span aria-hidden>👇</span>
-            <span className="font-medium">
+            <span className="font-medium leading-tight">
               push the beachball underwater and see what happens
             </span>
           </div>

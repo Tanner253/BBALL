@@ -13,26 +13,26 @@ export default function HomePage() {
         <OceanScene />
 
         {/* Hero copy + CTAs overlaid on the sky portion of the scene */}
-        <div className="absolute inset-x-0 top-0 z-10 pointer-events-none">
-          <div className="mx-auto max-w-6xl px-4 pt-10 sm:pt-16 lg:pt-24">
-            <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-[var(--ink)] max-w-3xl">
+        <div className="absolute inset-x-0 top-0 z-20 pointer-events-none">
+          <div className="mx-auto max-w-6xl px-4 pt-6 sm:pt-16 lg:pt-24">
+            <h1 className="text-display text-[2.4rem] leading-[1.02] sm:text-6xl sm:leading-[1.05] lg:text-7xl xl:text-8xl font-extrabold text-[var(--ink)] max-w-3xl">
               A beachball
               <br />
               <span className="shimmer-text">cannot be held</span>
               <br />
               underwater forever.
             </h1>
-            <p className="mt-5 text-base sm:text-lg text-[var(--ink-soft)] max-w-md leading-relaxed">
+            <p className="mt-3 sm:mt-5 text-sm sm:text-lg text-[var(--ink-soft)] max-w-md leading-relaxed">
               $BBALL is the meme that refuses to drown. Push it down, mock it,
               forget it — the ocean only stores energy. When it lets go, it
               <span className="font-semibold text-[var(--ink)]"> launches</span>.
             </p>
-            <div className="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/memes" className="btn-pop">
+            <div className="pointer-events-auto relative z-30 mt-5 sm:mt-7 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 max-w-sm sm:max-w-none">
+              <Link href="/memes" className="btn-pop justify-center">
                 Open the meme depot
                 <span aria-hidden>→</span>
               </Link>
-              <Link href="/lore" className="btn-ghost">
+              <Link href="/lore" className="btn-ghost justify-center">
                 Read the lore
               </Link>
             </div>
