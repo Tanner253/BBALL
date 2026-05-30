@@ -21,6 +21,11 @@ type Props = {
   /** Optional height of the playable scene */
   sceneHeight: number;
   sceneWidth: number;
+  /**
+   * Fires once each time the ball was submerged and then escapes the top
+   * of the scene (i.e. flies up off the screen, past the navbar).
+   */
+  onLaunchOffscreen?: () => void;
 };
 
 /**
@@ -39,9 +44,21 @@ export function BeachBall({
   surfaceY,
   sceneHeight,
   sceneWidth,
+  onLaunchOffscreen,
   className,
   style,
 }: Props) {
+  // Latest callback ref so the physics loop always sees the current handler
+  // without re-subscribing on every parent render.
+  const onLaunchRef = useRef(onLaunchOffscreen);
+  useEffect(() => {
+    onLaunchRef.current = onLaunchOffscreen;
+  }, [onLaunchOffscreen]);
+
+  // Tracks whether the ball is "armed" for a launch — set when it gets dunked,
+  // consumed when it flies off the top.
+  const armedRef = useRef(false);
+  const launchedThisFlightRef = useRef(false);
   // Position (top-left of ball element relative to scene)
   const x = useMotionValue(sceneWidth / 2 - size / 2);
   const y = useMotionValue(surfaceY - size * 0.6); // resting just on water
@@ -172,6 +189,31 @@ export function BeachBall({
 
         // Spin from horizontal velocity (visual only)
         spin.set(spin.get() + vx.current * dt * 0.6);
+
+        // ----- Launch detection -----
+        // Arm whenever the ball is submerged: a real launch must originate
+        // from underwater.
+        if (ny + size / 2 > surfaceY) {
+          armedRef.current = true;
+          launchedThisFlightRef.current = false;
+        }
+        // Fire once when the ball escapes the top of the scene (off-screen,
+        // past where the navbar sits over the hero).
+        if (
+          armedRef.current &&
+          !launchedThisFlightRef.current &&
+          ny + size < 0
+        ) {
+          launchedThisFlightRef.current = true;
+          armedRef.current = false;
+          onLaunchRef.current?.();
+        }
+      } else {
+        // Re-arm while the user is dunking the ball under the surface.
+        if (y.get() + size / 2 > surfaceY) {
+          armedRef.current = true;
+          launchedThisFlightRef.current = false;
+        }
       }
 
       // Bubbles spawn while underwater (especially while dragging deep)

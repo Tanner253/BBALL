@@ -239,6 +239,25 @@ body {
   100% { background-position: 240px 120px, -200px -100px; }
 }
 
+/* Launch counter pulse — fires once when key changes (i.e. on each launch) */
+@keyframes launch-pop {
+  0%   { transform: scale(1); box-shadow: 0 8px 22px -8px rgba(8,40,80,0.35); }
+  35%  { transform: scale(1.18); box-shadow: 0 0 0 8px rgba(255, 200, 90, 0.0), 0 12px 30px -6px rgba(255,150,60,0.55); }
+  100% { transform: scale(1); box-shadow: 0 8px 22px -8px rgba(8,40,80,0.35); }
+}
+.launch-pulse {
+  animation: launch-pop 520ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+/* Zero-state hint above the water — gentle bob so the eye finds it */
+@keyframes hint-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.launch-hint {
+  animation: hint-bob 2.6s ease-in-out infinite;
+}
+
 /* Underwater haze */
 .under-water {
   background:

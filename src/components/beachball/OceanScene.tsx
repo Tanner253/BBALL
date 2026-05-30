@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BeachBall } from "./BeachBall";
+
+const LAUNCH_STORAGE_KEY = "bball:launches";
 
 /**
  * Full-bleed hero scene. Renders one continuous vertical world:
@@ -12,6 +14,9 @@ import { BeachBall } from "./BeachBall";
 export function OceanScene() {
   const ref = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  const [launches, setLaunches] = useState<number>(0);
+  const [hydrated, setHydrated] = useState(false);
+  const [pulse, setPulse] = useState(0);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -24,6 +29,31 @@ export function OceanScene() {
     const ro = new ResizeObserver(update);
     ro.observe(ref.current);
     return () => ro.disconnect();
+  }, []);
+
+  // Hydrate the persisted launch count from localStorage.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(LAUNCH_STORAGE_KEY);
+      const n = raw ? parseInt(raw, 10) : 0;
+      if (Number.isFinite(n) && n >= 0) setLaunches(n);
+    } catch {
+      // ignore — privacy mode, etc.
+    }
+    setHydrated(true);
+  }, []);
+
+  const handleLaunch = useCallback(() => {
+    setLaunches((prev) => {
+      const next = prev + 1;
+      try {
+        window.localStorage.setItem(LAUNCH_STORAGE_KEY, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    setPulse((p) => p + 1);
   }, []);
 
   // Surface line at ~58% — gives more sky for the hero text overlay
@@ -177,7 +207,45 @@ export function OceanScene() {
           sceneWidth={rect.w}
           sceneHeight={sandY}
           size={ballSize}
+          onLaunchOffscreen={handleLaunch}
         />
+      )}
+
+      {/* Launch counter (top-right) */}
+      {hydrated && (
+        <div
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 pointer-events-none"
+          aria-live="polite"
+        >
+          <div
+            key={pulse}
+            className="glass rounded-full px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-2 text-[var(--ink)] shadow-[0_8px_22px_-8px_rgba(8,40,80,0.35)] launch-pulse"
+            title="Launches"
+          >
+            <span aria-hidden className="text-base sm:text-lg leading-none">🚀</span>
+            <span className="font-mono text-xs sm:text-sm uppercase tracking-[0.18em] opacity-70">
+              launches
+            </span>
+            <span className="font-bold tabular-nums text-sm sm:text-base">
+              {launches}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Zero-state hint near the surface */}
+      {hydrated && launches === 0 && (
+        <div
+          className="absolute inset-x-0 z-10 pointer-events-none flex justify-center px-4"
+          style={{ top: surfaceY - 64 }}
+        >
+          <div className="glass rounded-full px-4 py-2 text-xs sm:text-sm text-[var(--ink)] flex items-center gap-2 launch-hint">
+            <span aria-hidden>👇</span>
+            <span className="font-medium">
+              push the beachball underwater and see what happens
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );
