@@ -1,70 +1,47 @@
 import Link from "next/link";
 import Image from "next/image";
 import { OceanScene } from "@/components/beachball/OceanScene";
+import { DexChart } from "@/components/chart/DexChart";
 import { memes } from "@/data/memes";
 
 export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* HERO ----------------------------------------------------- */}
-      <section className="relative px-4 pt-6 sm:pt-10">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] items-end">
-            <div className="order-2 lg:order-1 max-w-xl">
-              <div className="inline-flex items-center gap-2 glass rounded-full px-3 py-1.5 text-xs font-medium text-[var(--ink-soft)] mb-5">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--ball-red)]" />
-                Solana · community owned · floats forever
-              </div>
-              <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl font-extrabold text-[var(--ink)]">
-                A beachball
-                <br />
-                <span className="shimmer-text">cannot be held</span>
-                <br />
-                underwater forever.
-              </h1>
-              <p className="mt-5 text-base sm:text-lg text-[var(--ink-soft)] max-w-md leading-relaxed">
-                $BBALL is the meme that refuses to drown. Push it down, mock it,
-                forget it — the ocean only stores energy. When it lets go, it
-                <span className="font-semibold text-[var(--ink)]"> launches</span>.
-              </p>
-              <div className="mt-7 flex flex-wrap items-center gap-3">
-                <Link href="/memes" className="btn-pop">
-                  Open the meme depot
-                  <span aria-hidden>→</span>
-                </Link>
-                <Link href="/lore" className="btn-ghost">
-                  Read the lore
-                </Link>
-                <a
-                  href="#slingshot"
-                  className="text-sm text-[var(--ink-soft)] hover:text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40 ml-1"
-                >
-                  How the slingshot works ↓
-                </a>
-              </div>
+      <section className="relative w-full mt-3 sm:mt-4">
+        {/* Full-bleed ocean scene as the hero canvas */}
+        <OceanScene />
 
-              <dl className="mt-9 grid grid-cols-3 gap-3 max-w-md">
-                <Stat label="Buoyancy" value="∞" />
-                <Stat label="Holders" value="growing" />
-                <Stat label="Floor" value="the surface" />
-              </dl>
-            </div>
-
-            <div className="order-1 lg:order-2">
-              <OceanScene />
-              <p className="mt-3 text-xs text-[var(--ink-mute)] text-center">
-                Tip: grab the ball, hold it under, let go. That&rsquo;s the chart.
-              </p>
+        {/* Hero copy + CTAs overlaid on the sky portion of the scene */}
+        <div className="absolute inset-x-0 top-0 z-10 pointer-events-none">
+          <div className="mx-auto max-w-6xl px-4 pt-10 sm:pt-16 lg:pt-24">
+            <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-[var(--ink)] max-w-3xl">
+              A beachball
+              <br />
+              <span className="shimmer-text">cannot be held</span>
+              <br />
+              underwater forever.
+            </h1>
+            <p className="mt-5 text-base sm:text-lg text-[var(--ink-soft)] max-w-md leading-relaxed">
+              $BBALL is the meme that refuses to drown. Push it down, mock it,
+              forget it — the ocean only stores energy. When it lets go, it
+              <span className="font-semibold text-[var(--ink)]"> launches</span>.
+            </p>
+            <div className="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
+              <Link href="/memes" className="btn-pop">
+                Open the meme depot
+                <span aria-hidden>→</span>
+              </Link>
+              <Link href="/lore" className="btn-ghost">
+                Read the lore
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* SLINGSHOT EXPLAINER ------------------------------------- */}
-      <section
-        id="slingshot"
-        className="relative mt-24 sm:mt-32 px-4"
-      >
+      <section id="slingshot" className="relative pt-20 sm:pt-28 px-4">
         <div className="mx-auto max-w-5xl text-center">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--ink-mute)]">
             the slingshot principle
@@ -101,6 +78,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* DEXSCREENER CHART --------------------------------------- */}
+      <DexChart />
+
       {/* MEMES TEASER -------------------------------------------- */}
       <section className="relative mt-24 sm:mt-32 px-4">
         <div className="mx-auto max-w-6xl">
@@ -114,8 +94,8 @@ export default function HomePage() {
               </h2>
               <p className="text-[var(--ink-soft)] mt-2 max-w-lg">
                 One-click copy. One-click download. Built so anyone can
-                raid in seconds — no right-click gymnastics, no Discord
-                scavenger hunts.
+                raid in seconds — no right-click gymnastics, no scavenger
+                hunts through old Telegram threads.
               </p>
             </div>
             <Link href="/memes" className="btn-ghost">
@@ -149,67 +129,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* VOTING TEASER ------------------------------------------- */}
-      <section className="relative mt-24 sm:mt-32 px-4">
-        <div className="mx-auto max-w-6xl">
-          <div className="relative overflow-hidden rounded-[28px] border border-white/60 glass-strong p-6 sm:p-10">
-            <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] items-center">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--ink-mute)]">
-                  coming soon
-                </p>
-                <h2 className="text-display text-3xl sm:text-4xl font-bold text-[var(--ink)] mt-2">
-                  Anonymous meme arena. <span className="shimmer-text">$BBALL</span> rewards.
-                </h2>
-                <p className="text-[var(--ink-soft)] mt-3 max-w-lg">
-                  Submit anonymously. Vote anonymously. The community elects
-                  the dankest memes of the week and the top creators get
-                  airdropped a slice of the $BBALL bag.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Link href="/vote" className="btn-pop">
-                    Preview the arena
-                  </Link>
-                  <a href="#" className="btn-ghost">
-                    Join early access
-                  </a>
-                </div>
-              </div>
-              <div className="relative">
-                <div
-                  aria-hidden
-                  className="absolute -inset-4 rounded-3xl"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 60% 40%, rgba(255,217,61,0.6), transparent 60%)",
-                  }}
-                />
-                <div className="relative grid grid-cols-3 gap-2">
-                  {memes.slice(0, 6).map((m, i) => (
-                    <div
-                      key={m.slug + i}
-                      className="relative aspect-square rounded-xl overflow-hidden border border-white/60"
-                      style={{ transform: `rotate(${(i % 2 === 0 ? -1 : 1) * (1 + i)}deg)` }}
-                    >
-                      <Image
-                        src={m.src}
-                        alt=""
-                        fill
-                        sizes="120px"
-                        className="object-cover"
-                      />
-                      <div className="absolute top-1 right-1 glass rounded-full text-[10px] px-1.5 py-0.5 font-mono">
-                        +{(i + 1) * 13}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA ----------------------------------------------------- */}
       <section className="relative mt-24 sm:mt-32 px-4">
         <div className="mx-auto max-w-3xl text-center">
@@ -223,25 +142,12 @@ export default function HomePage() {
             <Link href="/memes" className="btn-pop">
               Grab some ammo
             </Link>
-            <Link href="/vote" className="btn-ghost">
-              Vote on memes
+            <Link href="/lore" className="btn-ghost">
+              Read the lore
             </Link>
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="glass rounded-2xl px-4 py-3">
-      <dt className="text-[10px] uppercase tracking-wider text-[var(--ink-mute)] font-mono">
-        {label}
-      </dt>
-      <dd className="text-xl font-semibold text-[var(--ink)] mt-0.5">
-        {value}
-      </dd>
     </div>
   );
 }

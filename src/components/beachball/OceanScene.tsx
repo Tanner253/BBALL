@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { BeachBall } from "./BeachBall";
 
 /**
- * Full interactive ocean playground for the hero.
- * Renders sky, sun, water, ambient bubbles, and the playable BBALL.
+ * Full-bleed hero scene. Renders one continuous vertical world:
+ *   sky -> haze -> water surface -> water -> sand
+ * The page background below the hero is the same sand color, so the
+ * scene transitions out without a hard edge.
  */
-export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
+export function OceanScene() {
   const ref = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
 
@@ -24,20 +26,30 @@ export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
     return () => ro.disconnect();
   }, []);
 
-  // Surface line at ~52% so there is more underwater room than air,
-  // emphasizing the slingshot.
-  const surfaceY = Math.round(rect.h * 0.52);
-  const ballSize = Math.max(96, Math.min(160, Math.round(rect.w * 0.13)));
+  // Surface line at ~58% — gives more sky for the hero text overlay
+  // and enough water below for the slingshot to feel meaningful.
+  const surfaceY = Math.round(rect.h * 0.58);
+  const sandY = Math.round(rect.h * 0.93);
+  const ballSize = Math.max(96, Math.min(170, Math.round(rect.w * 0.11)));
 
   return (
     <div
       ref={ref}
-      className="relative w-full overflow-hidden rounded-[28px] border border-white/60 shadow-[0_30px_80px_-30px_rgba(8,50,80,0.35)]"
+      className="relative w-full overflow-hidden"
       style={{
-        minHeight,
-        height: "min(70vh, 720px)",
-        background:
-          "linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 28%, var(--sky-3) 45%, var(--sky-4) 52%, var(--sky-4) 52%)",
+        height: "min(100svh, 920px)",
+        minHeight: 600,
+        // Continuous sky -> water -> sand gradient. Last stop matches body bg.
+        background: `linear-gradient(180deg,
+          var(--sky-1) 0%,
+          var(--sky-2) 18%,
+          var(--sky-3) 32%,
+          var(--sky-4) 48%,
+          var(--water-shallow) 58%,
+          var(--water-mid) 70%,
+          var(--water-deep) 86%,
+          var(--sand-shadow) 95%,
+          var(--sand-light) 100%)`,
       }}
     >
       {/* Sun */}
@@ -45,10 +57,10 @@ export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
         aria-hidden
         className="absolute"
         style={{
-          left: "12%",
-          top: `${Math.max(40, surfaceY * 0.18)}px`,
-          width: 220,
-          height: 220,
+          left: "14%",
+          top: `${Math.max(60, surfaceY * 0.22)}px`,
+          width: 240,
+          height: 240,
           transform: "translate(-50%, -50%)",
         }}
       >
@@ -64,55 +76,57 @@ export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
         />
       </div>
 
-      {/* Distant horizon mountains-as-clouds */}
+      {/* Soft haze over the horizon */}
       <div
         aria-hidden
         className="absolute left-0 right-0"
         style={{
-          top: surfaceY - 30,
-          height: 30,
+          top: surfaceY - 36,
+          height: 36,
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.4) 70%, rgba(255,255,255,0.65) 100%)",
+            "linear-gradient(180deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.4) 70%, rgba(255,255,255,0.6) 100%)",
           filter: "blur(2px)",
         }}
       />
 
-      {/* Water body */}
+      {/* Caustics (light dapples on water) */}
       <div
         aria-hidden
-        className="absolute inset-x-0 under-water"
-        style={{ top: surfaceY, bottom: 0 }}
-      >
-        {/* caustics */}
-        <div
-          className="absolute inset-0 opacity-25 mix-blend-screen"
-          style={{
-            backgroundImage:
-              "radial-gradient(ellipse 60px 24px at 20% 10%, rgba(255,255,255,0.7), transparent 60%), radial-gradient(ellipse 80px 30px at 70% 30%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(ellipse 50px 22px at 40% 60%, rgba(255,255,255,0.6), transparent 60%), radial-gradient(ellipse 70px 28px at 85% 80%, rgba(255,255,255,0.45), transparent 60%)",
-            backgroundSize: "240px 120px, 200px 100px, 240px 120px, 200px 100px",
-            animation: "caustics-shift 14s linear infinite",
-          }}
-        />
+        className="absolute inset-x-0 mix-blend-screen pointer-events-none"
+        style={{
+          top: surfaceY,
+          bottom: rect.h - sandY,
+          opacity: 0.22,
+          backgroundImage:
+            "radial-gradient(ellipse 60px 24px at 20% 10%, rgba(255,255,255,0.7), transparent 60%), radial-gradient(ellipse 80px 30px at 70% 30%, rgba(255,255,255,0.55), transparent 60%), radial-gradient(ellipse 50px 22px at 40% 60%, rgba(255,255,255,0.6), transparent 60%), radial-gradient(ellipse 70px 28px at 85% 80%, rgba(255,255,255,0.45), transparent 60%)",
+          backgroundSize: "240px 120px, 200px 100px, 240px 120px, 200px 100px",
+          animation: "caustics-shift 14s linear infinite",
+        }}
+      />
 
-        {/* Light rays */}
-        <div
-          className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{
-            background:
-              "conic-gradient(from 90deg at 30% -10%, transparent 0 35deg, rgba(255,255,255,0.35) 38deg, transparent 42deg, transparent 60deg, rgba(255,255,255,0.25) 64deg, transparent 70deg)",
-            mixBlendMode: "screen",
-            filter: "blur(8px)",
-          }}
-        />
+      {/* Light rays */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 pointer-events-none"
+        style={{
+          top: surfaceY,
+          bottom: rect.h - sandY,
+          opacity: 0.22,
+          background:
+            "conic-gradient(from 90deg at 30% -10%, transparent 0 35deg, rgba(255,255,255,0.35) 38deg, transparent 42deg, transparent 60deg, rgba(255,255,255,0.25) 64deg, transparent 70deg)",
+          mixBlendMode: "screen",
+          filter: "blur(8px)",
+        }}
+      />
 
-        {/* Ambient deep bubbles */}
-        <AmbientBubbles
-          width={rect.w || 1}
-          height={rect.h - surfaceY || 1}
-        />
-      </div>
+      {/* Ambient deep bubbles */}
+      <AmbientBubbles
+        topY={surfaceY}
+        bottomY={sandY}
+        width={rect.w || 1}
+      />
 
-      {/* Wave surface (SVG) */}
+      {/* Surface waves */}
       <svg
         className="absolute left-0 right-0 pointer-events-none"
         style={{ top: surfaceY - 18 }}
@@ -127,32 +141,32 @@ export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
             <stop offset="100%" stopColor="rgba(255,255,255,0.0)" />
           </linearGradient>
         </defs>
-        <g>
-          <path
-            d="M0,18 C150,2 300,34 450,18 C600,2 750,34 900,18 C1050,2 1200,34 1200,18 L1200,36 L0,36 Z"
-            fill="url(#wave-fade)"
-            opacity="0.6"
-          >
-            <animate
-              attributeName="d"
-              dur="6s"
-              repeatCount="indefinite"
-              values="
+        <path
+          d="M0,18 C150,2 300,34 450,18 C600,2 750,34 900,18 C1050,2 1200,34 1200,18 L1200,36 L0,36 Z"
+          fill="url(#wave-fade)"
+          opacity="0.6"
+        >
+          <animate
+            attributeName="d"
+            dur="6s"
+            repeatCount="indefinite"
+            values="
               M0,18 C150,2 300,34 450,18 C600,2 750,34 900,18 C1050,2 1200,34 1200,18 L1200,36 L0,36 Z;
               M0,18 C150,34 300,2 450,18 C600,34 750,2 900,18 C1050,34 1200,2 1200,18 L1200,36 L0,36 Z;
               M0,18 C150,2 300,34 450,18 C600,2 750,34 900,18 C1050,2 1200,34 1200,18 L1200,36 L0,36 Z"
-            />
-          </path>
-        </g>
+          />
+        </path>
       </svg>
 
-      {/* Vignette / depth */}
+      {/* Wet-sand line (transition between deep water and sand) */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-x-0 pointer-events-none"
         style={{
+          top: sandY - 24,
+          height: 24,
           background:
-            "radial-gradient(120% 80% at 50% 110%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 60%)",
+            "linear-gradient(180deg, rgba(216,180,106,0.0) 0%, rgba(216,180,106,0.45) 100%)",
         }}
       />
 
@@ -161,27 +175,24 @@ export function OceanScene({ minHeight = 560 }: { minHeight?: number }) {
         <BeachBall
           surfaceY={surfaceY}
           sceneWidth={rect.w}
-          sceneHeight={rect.h}
+          sceneHeight={sandY}
           size={ballSize}
         />
       )}
-
-      {/* Stats / scene chrome */}
-      <div className="absolute top-4 left-4 right-4 flex items-start justify-between text-xs sm:text-sm pointer-events-none">
-        <div className="glass rounded-full px-3 py-1.5 text-[var(--ink-soft)]">
-          <span className="font-mono opacity-70">scene</span> ·
-          {" "}beach.bball.live
-        </div>
-        <div className="glass rounded-full px-3 py-1.5 text-[var(--ink-soft)]">
-          floats forever <span aria-hidden>🌊</span>
-        </div>
-      </div>
     </div>
   );
 }
 
-function AmbientBubbles({ width, height }: { width: number; height: number }) {
-  const bubbles = Array.from({ length: 14 }).map((_, i) => {
+function AmbientBubbles({
+  topY,
+  bottomY,
+  width,
+}: {
+  topY: number;
+  bottomY: number;
+  width: number;
+}) {
+  const bubbles = Array.from({ length: 16 }).map((_, i) => {
     const left = (i * 71) % 100;
     const size = 4 + ((i * 13) % 12);
     const delay = (i * 0.7) % 9;
@@ -189,7 +200,11 @@ function AmbientBubbles({ width, height }: { width: number; height: number }) {
     return { left, size, delay, duration, key: i };
   });
   return (
-    <div className="absolute inset-0 pointer-events-none" aria-hidden>
+    <div
+      className="absolute inset-x-0 pointer-events-none"
+      style={{ top: topY, height: bottomY - topY }}
+      aria-hidden
+    >
       {bubbles.map((b) => (
         <span
           key={b.key}
@@ -206,8 +221,7 @@ function AmbientBubbles({ width, height }: { width: number; height: number }) {
           }}
         />
       ))}
-      {/* unused width/height referenced to keep TS happy if extended later */}
-      <span className="hidden">{width}{height}</span>
+      <span className="hidden">{width}</span>
     </div>
   );
 }

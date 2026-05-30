@@ -330,34 +330,6 @@ export function BeachBall({
       >
         <BeachBallArt />
       </motion.div>
-
-      {/* Hint pill */}
-      <Hint dragging={dragging} />
-    </div>
-  );
-}
-
-function Hint({ dragging }: { dragging: boolean }) {
-  const [shown, setShown] = useState(true);
-  useEffect(() => {
-    if (dragging) {
-      setShown(false);
-      return;
-    }
-    const t = setTimeout(() => setShown(true), 4500);
-    return () => clearTimeout(t);
-  }, [dragging]);
-
-  return (
-    <div
-      className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-3 transition-all duration-500 ${
-        shown && !dragging ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-      }`}
-    >
-      <div className="glass rounded-full px-3 py-1.5 text-xs font-medium text-[var(--ink-soft)] flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--ball-red)] animate-pulse" />
-        Grab the ball. Drag it under. Let go.
-      </div>
     </div>
   );
 }

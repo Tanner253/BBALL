@@ -5,12 +5,19 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { BeachBallMark } from "@/components/brand/BeachBallMark";
+import { socials } from "@/lib/socials";
+import { ChartIcon, TelegramIcon, XIcon } from "./SocialIcons";
 
 const links = [
   { href: "/", label: "Home" },
   { href: "/memes", label: "Meme Depot" },
-  { href: "/vote", label: "Vote" },
   { href: "/lore", label: "Lore" },
+];
+
+const externalLinks = [
+  { href: socials.dexscreener, label: "Chart", Icon: ChartIcon },
+  { href: socials.x, label: "X", Icon: XIcon },
+  { href: socials.telegram, label: "Telegram", Icon: TelegramIcon },
 ];
 
 export function Navbar() {
@@ -76,15 +83,21 @@ export function Navbar() {
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <a
-              href="https://x.com"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline-flex btn-ghost text-sm"
-            >
-              Follow
-            </a>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-1">
+              {externalLinks.map(({ href, label, Icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={label}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white/55 text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-white transition-colors"
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
             <Link href="/memes" className="btn-pop text-sm">
               Raid memes
               <span aria-hidden>→</span>
@@ -148,6 +161,19 @@ export function Navbar() {
                   </Link>
                 );
               })}
+              <div className="mx-2 my-1 h-px bg-black/10" />
+              {externalLinks.map(({ href, label, Icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2.5 rounded-2xl text-sm font-medium text-[var(--ink-soft)] hover:bg-white/60 inline-flex items-center gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </a>
+              ))}
             </nav>
           </div>
         )}

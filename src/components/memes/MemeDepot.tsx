@@ -5,28 +5,43 @@ import { clsx } from "clsx";
 import { MemeCard } from "./MemeCard";
 import { CaptionCard } from "./CaptionCard";
 import type { Meme } from "@/data/memes";
+import { socials } from "@/lib/socials";
 
 type Props = {
   memes: Meme[];
   captions: { slug: string; text: string; tags: string[] }[];
 };
 
-type Tab = "images" | "captions";
+type Tab = "memes" | "quotes" | "captions";
 
 export function MemeDepot({ memes, captions }: Props) {
-  const [tab, setTab] = useState<Tab>("images");
+  const memeImages = useMemo(
+    () => memes.filter((m) => m.category === "image"),
+    [memes]
+  );
+  const quoteImages = useMemo(
+    () => memes.filter((m) => m.category === "quote"),
+    [memes]
+  );
+
+  const [tab, setTab] = useState<Tab>("memes");
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
+  const list = tab === "memes" ? memeImages : tab === "quotes" ? quoteImages : [];
+
   const allTags = useMemo(() => {
     const set = new Set<string>();
-    memes.forEach((m) => m.tags.forEach((t) => set.add(t)));
-    captions.forEach((c) => c.tags.forEach((t) => set.add(t)));
+    if (tab === "captions") {
+      captions.forEach((c) => c.tags.forEach((t) => set.add(t)));
+    } else {
+      list.forEach((m) => m.tags.forEach((t) => set.add(t)));
+    }
     return Array.from(set).sort();
-  }, [memes, captions]);
+  }, [tab, list, captions]);
 
   const filteredMemes = useMemo(() => {
-    return memes.filter((m) => {
+    return list.filter((m) => {
       if (activeTag && !m.tags.includes(activeTag)) return false;
       if (query) {
         const q = query.toLowerCase();
@@ -38,7 +53,7 @@ export function MemeDepot({ memes, captions }: Props) {
       }
       return true;
     });
-  }, [memes, query, activeTag]);
+  }, [list, query, activeTag]);
 
   const filteredCaptions = useMemo(() => {
     return captions.filter((c) => {
@@ -54,18 +69,28 @@ export function MemeDepot({ memes, captions }: Props) {
     });
   }, [captions, query, activeTag]);
 
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    setActiveTag(null);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="glass rounded-2xl p-2 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
         <div className="flex gap-1 p-1 bg-black/5 rounded-full self-start">
           <TabButton
-            active={tab === "images"}
-            onClick={() => setTab("images")}
-            label={`Images · ${memes.length}`}
+            active={tab === "memes"}
+            onClick={() => switchTab("memes")}
+            label={`Memes · ${memeImages.length}`}
+          />
+          <TabButton
+            active={tab === "quotes"}
+            onClick={() => switchTab("quotes")}
+            label={`Quotes · ${quoteImages.length}`}
           />
           <TabButton
             active={tab === "captions"}
-            onClick={() => setTab("captions")}
+            onClick={() => switchTab("captions")}
             label={`Captions · ${captions.length}`}
           />
         </div>
@@ -88,7 +113,7 @@ export function MemeDepot({ memes, captions }: Props) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search memes…"
+              placeholder={tab === "captions" ? "Search captions…" : "Search memes…"}
               className="w-full pl-9 pr-3 py-2 rounded-full bg-white/70 border border-white/70 placeholder:text-[var(--ink-mute)] text-sm focus:outline-none focus:bg-white"
             />
           </div>
@@ -126,27 +151,40 @@ export function MemeDepot({ memes, captions }: Props) {
         </div>
       )}
 
-      {tab === "images" ? (
-        filteredMemes.length === 0 ? (
+      {tab === "captions" ? (
+        filteredCaptions.length === 0 ? (
           <Empty />
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredMemes.map((m, i) => (
-              <MemeCard key={m.slug} meme={m} priority={i < 3} />
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            {filteredCaptions.map((c) => (
+              <CaptionCard key={c.slug} text={c.text} tags={c.tags} />
             ))}
           </div>
         )
-      ) : filteredCaptions.length === 0 ? (
+      ) : filteredMemes.length === 0 ? (
         <Empty />
+      ) : tab === "quotes" ? (
+        // Quotes: stack vertically, full-width each so the screenshots stay legible
+        <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
+          {filteredMemes.map((m, i) => (
+            <MemeCard key={m.slug} meme={m} priority={i < 2} />
+          ))}
+        </div>
       ) : (
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-          {filteredCaptions.map((c) => (
-            <CaptionCard key={c.slug} text={c.text} tags={c.tags} />
+        // Memes: 3-col grid; cards with aspect > 1.4 span full width for breathing room
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredMemes.map((m, i) => (
+            <div
+              key={m.slug}
+              className={clsx(m.aspect > 1.4 && "sm:col-span-2 lg:col-span-3")}
+            >
+              <MemeCard meme={m} priority={i < 3} />
+            </div>
           ))}
         </div>
       )}
 
-      {/* Submission CTA */}
+      {/* Community drop-off */}
       <div className="mt-6 relative overflow-hidden rounded-2xl glass p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -157,18 +195,17 @@ export function MemeDepot({ memes, captions }: Props) {
               Got a banger meme?
             </h3>
             <p className="text-sm text-[var(--ink-soft)] mt-1 max-w-md">
-              The community voting arena (with $BBALL prizes) is coming. Until
-              then, drop submissions in the Telegram and the best ones land
-              here.
+              Drop it in the Telegram. The best ones land here for the rest of
+              the community to use as ammo.
             </p>
           </div>
           <a
-            href="https://t.me"
+            href={socials.telegram}
             target="_blank"
             rel="noreferrer"
             className="btn-pop"
           >
-            Submit a meme
+            Drop in Telegram
             <span aria-hidden>→</span>
           </a>
         </div>
@@ -191,7 +228,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={clsx(
-        "relative px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+        "relative px-3 sm:px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap",
         active
           ? "bg-white text-[var(--ink)] shadow-sm"
           : "text-[var(--ink-soft)] hover:text-[var(--ink)]"

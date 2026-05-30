@@ -83,8 +83,7 @@ html, body {
 }
 
 body {
-  background:
-    radial-gradient(120% 80% at 50% -20%, var(--sky-1) 0%, var(--sky-2) 35%, var(--sky-3) 60%, var(--sky-4) 100%);
+  background: var(--sand-light);
   color: var(--ink);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;

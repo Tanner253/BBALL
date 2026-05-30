@@ -23,7 +23,7 @@ export default function MemesPage() {
             Free, organized, copy-pasteable $BBALL ammo. Hit{" "}
             <span className="font-semibold text-[var(--ink)]">Copy image</span>{" "}
             and the meme is on your clipboard — paste into X, Telegram,
-            Discord, group chats, billboards, your dreams. Raid responsibly.
+            CoinComms, group chats, billboards, your dreams. Raid responsibly.
           </p>
         </header>
 

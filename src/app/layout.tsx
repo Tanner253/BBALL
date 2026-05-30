@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
+import { ContractBar } from "@/components/site/ContractBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,19 +24,20 @@ const display = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: "$BBALL — A beachball cannot be held underwater forever",
   description:
-    "The official meme depot, lore, and slingshot HQ for the $BBALL Solana memecoin community. Grab the ball, hold it under, then let it fly.",
-  metadataBase: new URL("https://bball.meme"),
+    "The official meme depot and lore for the $BBALL Solana memecoin community. Grab the ball, hold it under, then let it fly.",
   openGraph: {
     title: "$BBALL — A beachball cannot be held underwater forever",
     description:
-      "Meme depot, lore, and slingshot HQ for the $BBALL community.",
+      "Meme depot and lore for the $BBALL community.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
+    site: "@bballonpf",
+    creator: "@bballonpf",
     title: "$BBALL",
     description:
-      "Meme depot, lore, and slingshot HQ for the $BBALL community.",
+      "Meme depot and lore for the $BBALL community.",
   },
 };
 
@@ -57,6 +59,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col selection:bg-[var(--ball-yellow)]">
         <Navbar />
+        <ContractBar />
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />
       </body>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { socials } from "@/lib/socials";
 
 export const metadata: Metadata = {
   title: "Lore — $BBALL",
@@ -69,23 +70,73 @@ export default function LorePage() {
 
           <p>
             This site exists to make community ammunition trivial to find and
-            trivial to share. The Meme Depot is one click and one paste. The
-            Arena (soon) lets anyone — anonymous or not — submit and vote on
-            the dankest community work, with $BBALL prizes for the winners.
+            trivial to share. The{" "}
+            <Link
+              className="font-semibold text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40"
+              href="/memes"
+            >
+              Meme Depot
+            </Link>{" "}
+            is one click and one paste. No credentials, no gates — just a
+            beachball and a community committed to its inevitability.
           </p>
 
+          <h2 className="text-display text-2xl sm:text-3xl font-bold text-[var(--ink)] mt-6">
+            Where the community lives
+          </h2>
+
           <p>
-            No credentials. No gates. Just a beachball and a community
-            committed to its inevitability.
+            X communities got shut down, so the conversation moved to{" "}
+            <a
+              className="font-semibold text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40"
+              href={socials.telegram}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Telegram
+            </a>{" "}
+            and{" "}
+            <a
+              className="font-semibold text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40"
+              href={socials.pumpfun}
+              target="_blank"
+              rel="noreferrer"
+            >
+              CoinComms on pump.fun
+            </a>
+            . Follow{" "}
+            <a
+              className="font-semibold text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40"
+              href={socials.x}
+              target="_blank"
+              rel="noreferrer"
+            >
+              @bballonpf
+            </a>{" "}
+            for posts. Need to reach the dev directly? Message{" "}
+            <a
+              className="font-semibold text-[var(--ink)] underline underline-offset-4 decoration-[var(--ball-red)]/40"
+              href={socials.devContact}
+              target="_blank"
+              rel="noreferrer"
+            >
+              @osknyo_dev
+            </a>{" "}
+            on X.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/memes" className="btn-pop">
               Open the depot
             </Link>
-            <Link href="/vote" className="btn-ghost">
-              Preview the arena
-            </Link>
+            <a
+              href={socials.telegram}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-ghost"
+            >
+              Join Telegram
+            </a>
           </div>
         </article>
       </div>
