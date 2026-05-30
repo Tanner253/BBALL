@@ -222,7 +222,7 @@ export function OceanScene() {
             className="glass rounded-full px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-2 text-[var(--ink)] shadow-[0_8px_22px_-8px_rgba(8,40,80,0.35)] launch-pulse"
             title="Launches"
           >
-            <span aria-hidden className="text-base sm:text-lg leading-none">🚀</span>
+            <span aria-hidden className="text-base sm:text-lg leading-none">🏆</span>
             <span className="font-mono text-xs sm:text-sm uppercase tracking-[0.18em] opacity-70">
               launches
             </span>

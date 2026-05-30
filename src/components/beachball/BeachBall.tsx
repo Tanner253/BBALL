@@ -151,10 +151,12 @@ export function BeachBall({
           vy.current = -Math.abs(vy.current) * 0.4;
         }
 
-        // Ceiling (sky cap so it doesn't fly off)
-        if (ny < -size * 1.2) {
-          ny = -size * 1.2;
-          vy.current = Math.abs(vy.current) * 0.5;
+        // Ceiling (sky cap). Set generously high so a full slingshot really
+        // launches the ball way off-screen before gravity drags it back.
+        const ceiling = -size * 8;
+        if (ny < ceiling) {
+          ny = ceiling;
+          vy.current = Math.abs(vy.current) * 0.4;
         }
 
         // Splash on surface crossing (downward)
@@ -303,10 +305,12 @@ export function BeachBall({
     const submerged = Math.min(1, depth / Math.max(1, maxDepth));
 
     if (submerged > 0.05) {
-      // SLINGSHOT: scale upward velocity by depth + a bonus from drag motion
-      const baseLaunch = 700; // baseline upward speed
-      const depthBonus = submerged * 1700; // deeper = harder
-      const userImpulse = Math.max(0, -vy.current) * 0.4; // honor user pull
+      // SLINGSHOT: scale upward velocity by depth + a bonus from drag motion.
+      // Tuned so even a shallow dunk launches the ball off-screen, and a
+      // full-depth dunk slingshots it well past the navbar.
+      const baseLaunch = 1100; // baseline upward speed
+      const depthBonus = submerged * 2800; // deeper = harder
+      const userImpulse = Math.max(0, -vy.current) * 0.55; // honor user pull
       vy.current = -(baseLaunch + depthBonus + userImpulse);
 
       // Slight horizontal bonus from user motion
