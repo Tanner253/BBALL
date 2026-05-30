@@ -98,11 +98,6 @@ export function Navbar() {
                 </a>
               ))}
             </div>
-            <Link href="/memes" className="btn-pop text-sm">
-              Raid memes
-              <span aria-hidden>→</span>
-            </Link>
-
             <button
               type="button"
               aria-label="Toggle menu"
