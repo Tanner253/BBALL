@@ -1,0 +1,197 @@
+"use client";
+
+import Image from "next/image";
+import { useCallback, useState } from "react";
+import { clsx } from "clsx";
+import type { Meme } from "@/data/memes";
+
+type Props = {
+  meme: Meme;
+  priority?: boolean;
+};
+
+export function MemeCard({ meme, priority }: Props) {
+  const [copied, setCopied] = useState<"image" | "caption" | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const flash = (kind: "image" | "caption") => {
+    setCopied(kind);
+    setTimeout(() => setCopied(null), 1600);
+  };
+
+  const copyImage = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await fetch(meme.src);
+      const blob = await res.blob();
+      // Convert to PNG if needed for clipboard support
+      const supportsFn = (
+        ClipboardItem as unknown as { supports?: (t: string) => boolean }
+      ).supports;
+      const supported =
+        typeof ClipboardItem !== "undefined" &&
+        (supportsFn ? supportsFn(blob.type) : blob.type === "image/png");
+
+      if (!supported && blob.type !== "image/png") {
+        // Re-encode through canvas to PNG
+        const png = await blobToPng(blob);
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": png }),
+        ]);
+      } else {
+        await navigator.clipboard.write([
+          new ClipboardItem({ [blob.type]: blob }),
+        ]);
+      }
+      flash("image");
+    } catch (e) {
+      console.warn(e);
+      setError("Couldn't copy image. Try Download instead.");
+    }
+  }, [meme.src]);
+
+  const copyCaption = useCallback(async () => {
+    if (!meme.caption) return;
+    try {
+      await navigator.clipboard.writeText(meme.caption);
+      flash("caption");
+    } catch {
+      setError("Couldn't copy caption.");
+    }
+  }, [meme.caption]);
+
+  const download = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(meme.src);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = meme.src.split(".").pop() || "png";
+      a.download = `bball-${meme.slug}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }, [meme.src, meme.slug]);
+
+  return (
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/55 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(8,50,80,0.3)] hover:shadow-[0_20px_40px_-15px_rgba(8,50,80,0.4)] transition-all duration-300 hover:-translate-y-0.5">
+      <div
+        className="relative w-full"
+        style={{ aspectRatio: meme.aspect }}
+      >
+        <Image
+          src={meme.src}
+          alt={meme.title}
+          fill
+          priority={priority}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover"
+        />
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+          {meme.tags.slice(0, 2).map((t) => (
+            <span
+              key={t}
+              className="rounded-full bg-black/55 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-white"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-3.5 flex flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold text-[var(--ink)] leading-tight">
+            {meme.title}
+          </h3>
+          <span className="text-[10px] font-mono text-[var(--ink-mute)] uppercase tracking-wider whitespace-nowrap">
+            #{meme.slug}
+          </span>
+        </div>
+
+        {meme.caption && (
+          <p className="text-xs text-[var(--ink-soft)] line-clamp-2 whitespace-pre-line">
+            {meme.caption}
+          </p>
+        )}
+
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={copyImage}
+            className={clsx(
+              "btn-pop !py-1.5 !px-3 !text-xs",
+              copied === "image" && "!bg-[var(--ball-green)] !text-white"
+            )}
+          >
+            {copied === "image" ? "Copied!" : "Copy image"}
+          </button>
+          {meme.caption && (
+            <button
+              type="button"
+              onClick={copyCaption}
+              className={clsx(
+                "btn-ghost !py-1.5 !px-3 !text-xs",
+                copied === "caption" &&
+                  "!bg-[var(--ball-green)]/15 !text-[var(--ink)] !border-[var(--ball-green)]"
+              )}
+            >
+              {copied === "caption" ? "Caption copied" : "Copy caption"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={download}
+            disabled={downloading}
+            className="btn-ghost !py-1.5 !px-3 !text-xs"
+          >
+            {downloading ? "…" : "Download"}
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-[11px] text-[var(--ball-red)]">{error}</p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+async function blobToPng(blob: Blob): Promise<Blob> {
+  const img = await blobToImage(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+  ctx.drawImage(img, 0, 0);
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Encode failed"))),
+      "image/png"
+    );
+  });
+}
+
+function blobToImage(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new window.Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      reject(e);
+    };
+    img.src = url;
+  });
+}

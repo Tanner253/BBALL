@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+/* =========================================================
+   $BBALL — Summer Beach Design System
+   Vibe: salty air, late-afternoon sun, aqua water, dripping
+   pop colors of a classic beachball.
+   ========================================================= */
+
+:root {
+  /* Sky / sun */
+  --sky-1: #fff4d6;          /* warm cream sunrise */
+  --sky-2: #ffd6a0;          /* peach */
+  --sky-3: #ffb1b8;          /* coral haze */
+  --sky-4: #93d8ff;          /* daytime sky */
+
+  /* Water */
+  --water-shallow: #6fe0d5;
+  --water-mid:     #1ab8c7;
+  --water-deep:    #0a6a87;
+  --water-abyss:   #052b4a;
+
+  /* Sand */
+  --sand-light: #fff1cf;
+  --sand:       #f6dca0;
+  --sand-shadow:#d8b46a;
+
+  /* Brand pop */
+  --ball-red:    #ff4d4d;
+  --ball-blue:   #2f7bff;
+  --ball-yellow: #ffd93d;
+  --ball-green:  #2ecc71;
+  --ball-orange: #ff8a2b;
+  --ball-white:  #ffffff;
+
+  /* Ink */
+  --ink:         #0b1e2e;
+  --ink-soft:    #234058;
+  --ink-mute:    #5d7a92;
+
+  /* Surfaces */
+  --glass:       rgba(255, 255, 255, 0.55);
+  --glass-strong:rgba(255, 255, 255, 0.78);
+  --glass-line:  rgba(255, 255, 255, 0.7);
+
+  --foreground:  var(--ink);
+  --background:  var(--sky-1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-mute: var(--ink-mute);
+
+  --color-sky-1: var(--sky-1);
+  --color-sky-2: var(--sky-2);
+  --color-sky-3: var(--sky-3);
+  --color-sky-4: var(--sky-4);
+
+  --color-water-shallow: var(--water-shallow);
+  --color-water-mid: var(--water-mid);
+  --color-water-deep: var(--water-deep);
+  --color-water-abyss: var(--water-abyss);
+
+  --color-sand-light: var(--sand-light);
+  --color-sand: var(--sand);
+  --color-sand-shadow: var(--sand-shadow);
+
+  --color-ball-red: var(--ball-red);
+  --color-ball-blue: var(--ball-blue);
+  --color-ball-yellow: var(--ball-yellow);
+  --color-ball-green: var(--ball-green);
+  --color-ball-orange: var(--ball-orange);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(120% 80% at 50% -20%, var(--sky-1) 0%, var(--sky-2) 35%, var(--sky-3) 60%, var(--sky-4) 100%);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Reusable bits ------------------------------------------------ */
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 10px 30px -12px rgba(8, 50, 80, 0.25);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid var(--glass-line);
+}
+
+.text-display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--ball-red) 0%,
+    var(--ball-orange) 18%,
+    var(--ball-yellow) 36%,
+    var(--ball-green) 54%,
+    var(--ball-blue) 72%,
+    var(--ball-red) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 8s linear infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* Sun / glow */
+.sun-glow {
+  background: radial-gradient(circle at center,
+    rgba(255, 240, 180, 0.95) 0%,
+    rgba(255, 200, 120, 0.6) 30%,
+    rgba(255, 160, 100, 0.0) 70%);
+  filter: blur(2px);
+}
+
+/* Subtle floating idle motion */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.animate-float { animation: float-y 4.5s ease-in-out infinite; }
+
+/* Wave shimmer on water surface */
+@keyframes wave-shift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Bubble rise */
+@keyframes bubble-rise {
+  0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+  10%  { opacity: 0.8; }
+  90%  { opacity: 0.7; }
+  100% { transform: translateY(-120vh) scale(1.1); opacity: 0; }
+}
+
+/* Pretty selection */
+::selection {
+  background: var(--ball-yellow);
+  color: var(--ink);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--water-mid), var(--water-deep));
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Buttons */
+.btn-pop {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  background: linear-gradient(180deg, #ffffff, #ffeaa6);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.95) inset,
+    0 -6px 18px -8px rgba(255, 170, 60, 0.55) inset,
+    0 8px 24px -10px rgba(255, 140, 60, 0.45);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+.btn-pop:hover { transform: translateY(-1px); filter: saturate(115%); }
+.btn-pop:active { transform: translateY(0); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  border: 1px solid rgba(11, 30, 46, 0.12);
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(10px);
+  transition: all 160ms ease;
+}
+.btn-ghost:hover {
+  color: var(--ink);
+  border-color: rgba(11, 30, 46, 0.25);
+  background: rgba(255,255,255,0.8);
+}
+
+/* Noise texture for sand / cinematic feel */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+}
+
+/* Caustics (water light dappling) */
+@keyframes caustics-shift {
+  0%   { background-position: 0 0, 0 0; }
+  100% { background-position: 240px 120px, -200px -100px; }
+}
+
+/* Underwater haze */
+.under-water {
+  background:
+    linear-gradient(180deg,
+      rgba(111, 224, 213, 0.0) 0%,
+      rgba(26, 184, 199, 0.55) 22%,
+      rgba(10, 106, 135, 0.85) 60%,
+      rgba(5, 43, 74, 0.98) 100%);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--ball-yellow);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
