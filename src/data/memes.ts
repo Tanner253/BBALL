@@ -233,6 +233,15 @@ export const memes: Meme[] = [
     tags: ["rabbit", "alice", "shitpost"],
     aspect: 450 / 680,
   },
+  {
+    slug: "goku-spirit-bball",
+    title: "Spirit $BBALL",
+    category: "image",
+    src: "/memes/lift.jpg",
+    caption: "lend me your energy. $BBALL",
+    tags: ["goku", "dbz", "shitpost", "energy"],
+    aspect: 1024 / 909,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
