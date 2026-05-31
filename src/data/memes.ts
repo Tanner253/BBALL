@@ -196,6 +196,43 @@ export const memes: Meme[] = [
     tags: ["anime", "underwater", "cute"],
     aspect: 1,
   },
+  {
+    slug: "dont-forget-floaties",
+    title: "Don't forget your floaties",
+    category: "image",
+    src: "/memes/always.jpg",
+    caption:
+      "this memecoin is like a beach ball underwater?\ndont forget your floaties. $BBALL",
+    tags: ["space", "shitpost", "astronaut"],
+    aspect: 680 / 383,
+  },
+  {
+    slug: "sell-the-bottom",
+    title: "POV: you sell the bottom",
+    category: "image",
+    src: "/memes/bottom.jpg",
+    caption: "pov: you sell the bottom. but you don't understand the lore. $BBALL",
+    tags: ["divers", "underwater", "twopanel", "thesis"],
+    aspect: 1024 / 559,
+  },
+  {
+    slug: "absolute-bball",
+    title: "Absolute $BBALL",
+    category: "image",
+    src: "/memes/cina.jpg",
+    caption: "absolute $BBALL.",
+    tags: ["mascot", "shitpost", "absolute"],
+    aspect: 1024 / 1008,
+  },
+  {
+    slug: "white-rabbit",
+    title: "Late for the launch",
+    category: "image",
+    src: "/memes/time.jpg",
+    caption: "you're late. $BBALL doesn't wait.",
+    tags: ["rabbit", "alice", "shitpost"],
+    aspect: 450 / 680,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
