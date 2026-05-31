@@ -19,9 +19,11 @@ export type Meme = {
  *
  * IMPORTANT: only real, community-supplied memes belong here.
  * Adding more is as simple as dropping a file into /public/memes
- * and appending an entry below.
+ * and appending an entry to the bottom of `memesChronological` —
+ * the exported `memes` is the reversed view, so newest entries
+ * automatically surface at the top of the depot.
  */
-export const memes: Meme[] = [
+const memesChronological: Meme[] = [
   // ----- Visual / image memes ---------------------------------------------
   {
     slug: "you-are-here",
@@ -336,10 +338,14 @@ export const memes: Meme[] = [
   },
 ];
 
+export const memes: Meme[] = [...memesChronological].reverse();
+
 /**
  * Copy-only "captions" — pure text memes the community can paste anywhere.
+ * Same convention as memes: append to the chronological list, the export
+ * surfaces the newest first.
  */
-export const captions: { slug: string; text: string; tags: string[] }[] = [
+const captionsChronological: { slug: string; text: string; tags: string[] }[] = [
   {
     slug: "underwater-forever",
     text: "a beachball cannot be held underwater forever. $BBALL",
@@ -386,3 +392,5 @@ export const captions: { slug: string; text: string; tags: string[] }[] = [
     tags: ["raid", "one-liner"],
   },
 ];
+
+export const captions = [...captionsChronological].reverse();
