@@ -329,6 +329,15 @@ const memesChronological: Meme[] = [
     tags: ["reaction", "shitpost", "girlfriend"],
     aspect: 676 / 500,
   },
+  {
+    slug: "snorkel-girl",
+    title: "She holds it down too",
+    category: "image",
+    src: "/memes/snorkel-girl.png",
+    caption: "she heard about $BBALL. now she's holding the line.",
+    tags: ["stickfigure", "snorkel", "underwater", "shitpost"],
+    aspect: 1024 / 685,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
