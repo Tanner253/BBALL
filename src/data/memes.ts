@@ -338,6 +338,15 @@ const memesChronological: Meme[] = [
     tags: ["stickfigure", "snorkel", "underwater", "shitpost"],
     aspect: 1024 / 685,
   },
+  {
+    slug: "not-holding-bball",
+    title: "When you find out they're not holding $BBALL",
+    category: "image",
+    src: "/memes/not-holding.jpg",
+    caption: "when you find out they aren't holding $BBALL:",
+    tags: ["reaction", "shitpost", "stare"],
+    aspect: 512 / 680,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
