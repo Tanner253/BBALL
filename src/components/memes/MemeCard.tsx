@@ -80,11 +80,21 @@ export function MemeCard({ meme, priority }: Props) {
     }
   }, [meme.src, meme.slug]);
 
+  // Image memes are laid out in a uniform square grid (object-contain so
+  // nothing gets cropped). Quote screenshots keep their natural aspect since
+  // they're designed as readable horizontal strips.
+  const isQuote = meme.category === "quote";
+
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/55 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(8,50,80,0.3)] hover:shadow-[0_20px_40px_-15px_rgba(8,50,80,0.4)] transition-all duration-300 hover:-translate-y-0.5">
       <div
-        className="relative w-full bg-black"
-        style={{ aspectRatio: meme.aspect }}
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: isQuote ? meme.aspect : 1,
+          background: isQuote
+            ? "#ffffff"
+            : "linear-gradient(135deg, var(--sand-light) 0%, #ffffff 55%, var(--sky-1) 100%)",
+        }}
       >
         <Image
           src={meme.src}
@@ -92,7 +102,7 @@ export function MemeCard({ meme, priority }: Props) {
           fill
           priority={priority}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-          className={meme.category === "quote" ? "object-contain" : "object-cover"}
+          className="object-contain p-2 transition-transform duration-500 group-hover:scale-[1.03]"
         />
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
           {meme.tags.slice(0, 2).map((t) => (
@@ -106,53 +116,50 @@ export function MemeCard({ meme, priority }: Props) {
         </div>
       </div>
 
-      <div className="p-3.5 flex flex-col gap-2.5">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-[var(--ink)] leading-tight">
-            {meme.title}
-          </h3>
-          <span className="text-[10px] font-mono text-[var(--ink-mute)] uppercase tracking-wider whitespace-nowrap">
-            #{meme.slug}
-          </span>
-        </div>
+      <div className="p-3 flex flex-col gap-2 flex-1">
+        <h3 className="font-semibold text-[var(--ink)] leading-tight text-sm line-clamp-1">
+          {meme.title}
+        </h3>
 
         {meme.caption && (
-          <p className="text-xs text-[var(--ink-soft)] line-clamp-2 whitespace-pre-line">
+          <p className="text-[11px] text-[var(--ink-soft)] line-clamp-2 whitespace-pre-line">
             {meme.caption}
           </p>
         )}
 
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
           <button
             type="button"
             onClick={copyImage}
             className={clsx(
-              "btn-pop !py-1.5 !px-3 !text-xs",
+              "btn-pop !py-1 !px-2.5 !text-[11px]",
               copied === "image" && "!bg-[var(--ball-green)] !text-white"
             )}
           >
-            {copied === "image" ? "Copied!" : "Copy image"}
+            {copied === "image" ? "Copied!" : "Copy"}
           </button>
           {meme.caption && (
             <button
               type="button"
               onClick={copyCaption}
               className={clsx(
-                "btn-ghost !py-1.5 !px-3 !text-xs",
+                "btn-ghost !py-1 !px-2.5 !text-[11px]",
                 copied === "caption" &&
                   "!bg-[var(--ball-green)]/15 !text-[var(--ink)] !border-[var(--ball-green)]"
               )}
             >
-              {copied === "caption" ? "Caption copied" : "Copy caption"}
+              {copied === "caption" ? "✓ caption" : "Caption"}
             </button>
           )}
           <button
             type="button"
             onClick={download}
             disabled={downloading}
-            className="btn-ghost !py-1.5 !px-3 !text-xs"
+            className="btn-ghost !py-1 !px-2.5 !text-[11px]"
+            aria-label="Download"
+            title="Download"
           >
-            {downloading ? "…" : "Download"}
+            {downloading ? "…" : "↓"}
           </button>
         </div>
 

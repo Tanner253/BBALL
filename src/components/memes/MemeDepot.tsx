@@ -171,15 +171,11 @@ export function MemeDepot({ memes, captions }: Props) {
           ))}
         </div>
       ) : (
-        // Memes: 3-col grid; cards with aspect > 1.4 span full width for breathing room
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        // Memes: uniform square-card grid so the catalog is easy to skim.
+        // Cards never crop — `object-contain` letterboxes onto a soft tile.
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filteredMemes.map((m, i) => (
-            <div
-              key={m.slug}
-              className={clsx(m.aspect > 1.4 && "sm:col-span-2 lg:col-span-3")}
-            >
-              <MemeCard meme={m} priority={i < 3} />
-            </div>
+            <MemeCard key={m.slug} meme={m} priority={i < 4} />
           ))}
         </div>
       )}
