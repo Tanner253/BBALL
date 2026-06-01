@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { ContractBar } from "@/components/site/ContractBar";
+import { BeachBallCursor } from "@/components/site/BeachBallCursor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col selection:bg-[var(--ball-yellow)]">
+        <BeachBallCursor />
         <Navbar />
         <ContractBar />
         <main className="flex-1 flex flex-col">{children}</main>

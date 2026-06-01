@@ -274,3 +274,52 @@ body {
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* ---------- Custom beachball cursor ---------- */
+/* Hide the system cursor only on fine-pointer devices when active.
+   Touch / coarse-pointer devices keep their native behavior. */
+@media (pointer: fine) {
+  body.bb-cursor-active,
+  body.bb-cursor-active * {
+    cursor: none !important;
+  }
+}
+
+.bb-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: var(--bb-cursor-opacity, 0);
+  transform:
+    translate3d(var(--bb-cursor-x, -100px), var(--bb-cursor-y, -100px), 0)
+    translate(-50%, -50%)
+    scale(var(--bb-cursor-scale, 1));
+  transition: opacity 220ms ease-out;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 4px 8px rgba(8, 40, 80, 0.35));
+  /* Hide on coarse-pointer devices entirely, even if mounted. */
+  display: block;
+}
+@media (pointer: coarse) {
+  .bb-cursor { display: none; }
+}
+
+.bb-cursor-spin {
+  width: 100%;
+  height: 100%;
+  animation: bb-cursor-spin 4.5s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes bb-cursor-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Respect reduced motion: stop spinning */
+@media (prefers-reduced-motion: reduce) {
+  .bb-cursor-spin { animation: none; }
+}
