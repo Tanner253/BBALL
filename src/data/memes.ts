@@ -244,6 +244,91 @@ const memesChronological: Meme[] = [
     tags: ["goku", "dbz", "shitpost", "energy"],
     aspect: 1024 / 909,
   },
+  {
+    slug: "buoyancy-diagram",
+    title: "Weight & buoyancy diagram",
+    category: "image",
+    src: "/memes/wjoak.jpg",
+    caption:
+      "more weight applied = more potential buoyant force. it's literally a textbook. $BBALL",
+    tags: ["wojak", "thesis", "physics", "diagram"],
+    aspect: 1266 / 1266,
+  },
+  {
+    slug: "change-my-mind",
+    title: "Bid $BBALL — change my mind",
+    category: "image",
+    src: "/memes/truthbomb.jpg",
+    caption:
+      "if you fucks would stop trading shitters and bid $BBALL we'd all be rich. change my mind.",
+    tags: ["change-my-mind", "shitpost", "bid"],
+    aspect: 1187 / 1200,
+  },
+  {
+    slug: "wagmi-bball",
+    title: "Dad are wgmi?",
+    category: "image",
+    src: "/memes/wagmi.jpg",
+    caption:
+      "dad are wgmi?\nyes, my son.\nwe've got a beach ball under water. $BBALL",
+    tags: ["finding-neverland", "wgmi", "shitpost"],
+    aspect: 500 / 709,
+  },
+  {
+    slug: "two-guys-bus",
+    title: "Two guys on a bus",
+    category: "image",
+    src: "/memes/dontbegay.jpg",
+    caption: "shitter tokens vs. a beach ball under water. pick wisely. $BBALL",
+    tags: ["two-guys", "shitpost", "comparison"],
+    aspect: 564 / 500,
+  },
+  {
+    slug: "they-dont-know",
+    title: "They don't know",
+    category: "image",
+    src: "/memes/theydontknow.jpg",
+    caption: "they don't know i'm holding a beach ball under water. $BBALL",
+    tags: ["wojak", "they-dont-know", "shitpost"],
+    aspect: 500 / 501,
+  },
+  {
+    slug: "chills-bball",
+    title: "Gives me chills",
+    category: "image",
+    src: "/memes/chills.jpg",
+    caption: "i heard it's like a beach ball under water… me. $BBALL",
+    tags: ["chills", "whisper", "shitpost"],
+    aspect: 1,
+  },
+  {
+    slug: "patrick-todo",
+    title: "Patrick's to-do list",
+    category: "image",
+    src: "/memes/tpdp.jpg",
+    caption:
+      "1. buy beach ball under water\n2. shill beach ball under water\n3. go touch grass\n\n$BBALL",
+    tags: ["patrick", "spongebob", "todo"],
+    aspect: 800 / 500,
+  },
+  {
+    slug: "first-world-problems",
+    title: "First world problems",
+    category: "image",
+    src: "/memes/tiddy.jpg",
+    caption: "he said my tits are like a beach ball under water. $BBALL",
+    tags: ["first-world", "shitpost", "compliment"],
+    aspect: 613 / 408,
+  },
+  {
+    slug: "when-she-finds-out",
+    title: "When she finds out",
+    category: "image",
+    src: "/memes/cm.jpg",
+    caption: "when she finds out you are holding a beach ball under water. $BBALL",
+    tags: ["reaction", "shitpost", "girlfriend"],
+    aspect: 676 / 500,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
@@ -335,6 +420,15 @@ const memesChronological: Meme[] = [
     caption: "literally a beachball underwater",
     tags: ["receipts", "twitter", "solana"],
     aspect: 367 / 91,
+  },
+  {
+    slug: "quote-ansem",
+    title: "Ansem · @blknoiz06",
+    category: "quote",
+    src: "/memes/anse.png",
+    caption: "beach ball underwater",
+    tags: ["receipts", "twitter", "ansem"],
+    aspect: 208 / 91,
   },
 ];
 

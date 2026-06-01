@@ -105,7 +105,10 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-            {memes.slice(0, 3).map((m) => (
+            {memes
+              .filter((m) => m.category === "image")
+              .slice(0, 3)
+              .map((m) => (
               <Link
                 key={m.slug}
                 href="/memes"
