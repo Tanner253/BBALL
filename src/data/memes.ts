@@ -402,6 +402,43 @@ const memesChronological: Meme[] = [
     tags: ["ramsey", "shitpost", "reaction"],
     aspect: 1280 / 753,
   },
+  {
+    slug: "honest-work",
+    title: "It ain't much, but it's honest work",
+    category: "image",
+    src: "/memes/honest-work.png",
+    caption: "holding $BBALL underwater. it ain't much, but it's honest work.",
+    tags: ["farmer", "shitpost", "honest"],
+    aspect: 864 / 644,
+  },
+  {
+    slug: "pointing-bball",
+    title: "Everyone is pointing at $BBALL",
+    category: "image",
+    src: "/memes/pointing.jpg",
+    caption: "everyone is pointing at $BBALL.",
+    tags: ["pointing", "shitpost", "compilation"],
+    aspect: 621 / 680,
+  },
+  {
+    slug: "unbothered",
+    title: "Unbothered. Moisturized. Underwater.",
+    category: "image",
+    src: "/memes/unbothered.jpg",
+    caption:
+      "unbothered. moisturized. happy. in my lane. focused. flourishing. holding $BBALL.",
+    tags: ["affirmation", "garden", "thesis"],
+    aspect: 1,
+  },
+  {
+    slug: "jordan-cry",
+    title: "Jordan & the beachball",
+    category: "image",
+    src: "/memes/jordan-cry.jpg",
+    caption: "championship-cry. $BBALL is personal.",
+    tags: ["jordan", "champion", "emotional"],
+    aspect: 1280 / 802,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
@@ -502,6 +539,16 @@ const memesChronological: Meme[] = [
     caption: "beach ball underwater",
     tags: ["receipts", "twitter", "ansem"],
     aspect: 208 / 91,
+  },
+  {
+    slug: "quote-ansem-vibe",
+    title: "Ansem · vibe shift",
+    category: "quote",
+    src: "/memes/ansem-vibe.png",
+    caption:
+      "vibe shift + tides turning + stars aligning + balls tingling + this time is different + supercycle (real) + beachball underwater + golden catchup trade + mental capitulation + what if we all made it + i hope i don't jinx it + manifesting ATHs please god please for the one time",
+    tags: ["receipts", "twitter", "ansem", "manifest"],
+    aspect: 589 / 154,
   },
 ];
 
