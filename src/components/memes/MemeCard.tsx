@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useState } from "react";
 import { clsx } from "clsx";
 import type { Meme } from "@/data/memes";
+import { MemePreview } from "./MemePreview";
 
 type Props = {
   meme: Meme;
@@ -14,6 +15,7 @@ export function MemeCard({ meme, priority }: Props) {
   const [copied, setCopied] = useState<"image" | "caption" | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const flash = (kind: "image" | "caption") => {
     setCopied(kind);
@@ -87,8 +89,11 @@ export function MemeCard({ meme, priority }: Props) {
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/55 backdrop-blur-md shadow-[0_10px_30px_-15px_rgba(8,50,80,0.3)] hover:shadow-[0_20px_40px_-15px_rgba(8,50,80,0.4)] transition-all duration-300 hover:-translate-y-0.5">
-      <div
-        className="relative w-full overflow-hidden"
+      <button
+        type="button"
+        onClick={() => setPreviewOpen(true)}
+        aria-label={`Preview ${meme.title}`}
+        className="relative w-full overflow-hidden block cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ball-yellow)]"
         style={{
           aspectRatio: isQuote ? meme.aspect : 1,
           background: isQuote
@@ -104,17 +109,14 @@ export function MemeCard({ meme, priority }: Props) {
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
           className="object-contain p-2 transition-transform duration-500 group-hover:scale-[1.03]"
         />
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-          {meme.tags.slice(0, 2).map((t) => (
-            <span
-              key={t}
-              className="rounded-full bg-black/55 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-white"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
+        {/* Subtle expand affordance — only visible on hover/focus, never covers content */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/55 backdrop-blur-md px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-white opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          Click to view
+        </span>
+      </button>
 
       <div className="p-3 flex flex-col gap-2 flex-1">
         <h3 className="font-semibold text-[var(--ink)] leading-tight text-sm line-clamp-1">
@@ -167,6 +169,18 @@ export function MemeCard({ meme, priority }: Props) {
           <p className="text-[11px] text-[var(--ball-red)]">{error}</p>
         )}
       </div>
+
+      {previewOpen && (
+        <MemePreview
+          meme={meme}
+          onClose={() => setPreviewOpen(false)}
+          onCopyImage={copyImage}
+          onCopyCaption={copyCaption}
+          onDownload={download}
+          copied={copied}
+          downloading={downloading}
+        />
+      )}
     </article>
   );
 }

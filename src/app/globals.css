@@ -275,6 +275,15 @@ body {
   border-radius: 6px;
 }
 
+/* Meme preview lightbox */
+@keyframes meme-preview-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.meme-preview-fade {
+  animation: meme-preview-in 180ms ease-out;
+}
+
 /* ---------- Custom beachball cursor ---------- */
 /* Hide the system cursor only on fine-pointer devices when active.
    Touch / coarse-pointer devices keep their native behavior. */
@@ -285,38 +294,83 @@ body {
   }
 }
 
+/* Outer node — handles position only, with no transition.
+   Position writes are pure (no animation), matching native cursor latency. */
 .bb-cursor {
   position: fixed;
   top: 0;
   left: 0;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   pointer-events: none;
   z-index: 9999;
   opacity: var(--bb-cursor-opacity, 0);
   transform:
     translate3d(var(--bb-cursor-x, -100px), var(--bb-cursor-y, -100px), 0)
-    translate(-50%, -50%)
-    scale(var(--bb-cursor-scale, 1));
+    translate(-50%, -50%);
   transition: opacity 220ms ease-out;
   will-change: transform, opacity;
   filter: drop-shadow(0 4px 8px rgba(8, 40, 80, 0.35));
-  /* Hide on coarse-pointer devices entirely, even if mounted. */
   display: block;
 }
 @media (pointer: coarse) {
   .bb-cursor { display: none; }
 }
 
+/* Inner scale node — only the scale animates; isolated from the position
+   transform so hover/press feedback is smooth and never delays cursor motion. */
+.bb-cursor-scale {
+  width: 100%;
+  height: 100%;
+  transform: scale(var(--bb-cursor-scale, 1));
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1.2);
+  will-change: transform;
+}
+
+/* Spin node — a single GPU-composited rotation on a single rasterized child. */
 .bb-cursor-spin {
   width: 100%;
   height: 100%;
   animation: bb-cursor-spin 4.5s linear infinite;
   transform-origin: 50% 50%;
+  will-change: transform;
 }
 @keyframes bb-cursor-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from { transform: rotate3d(0, 0, 1, 0deg); }
+  to   { transform: rotate3d(0, 0, 1, 360deg); }
+}
+
+/* The ball itself — pure CSS, no SVG. Conic gradient = single rasterization. */
+.bb-cursor-ball {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background:
+    /* highlight */
+    radial-gradient(circle at 32% 28%,
+      rgba(255,255,255,0.88) 0%,
+      rgba(255,255,255,0.0) 45%),
+    /* 5 colored panels */
+    conic-gradient(
+      var(--ball-red)    0deg   72deg,
+      var(--ball-yellow) 72deg  144deg,
+      var(--ball-green)  144deg 216deg,
+      var(--ball-blue)   216deg 288deg,
+      var(--ball-orange) 288deg 360deg
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.18),
+    inset 0 -3px 6px rgba(0,0,0,0.18);
+}
+.bb-cursor-ball::after {
+  /* Center white cap */
+  content: "";
+  position: absolute;
+  inset: 38%;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10);
 }
 
 /* Respect reduced motion: stop spinning */
