@@ -613,6 +613,24 @@ const memesChronological: Meme[] = [
     tags: ["wojak", "underwater", "shitpost", "unc"],
     aspect: 1116 / 788,
   },
+  {
+    slug: "swish",
+    title: "All net on $BBALL",
+    category: "image",
+    src: "/memes/swish.jpg",
+    caption: "calling my shot. $BBALL — nothing but net.",
+    tags: ["jordan", "swish", "shitpost", "head"],
+    aspect: 933 / 1024,
+  },
+  {
+    slug: "locked-in",
+    title: "Locked in",
+    category: "image",
+    src: "/memes/lockedin.jpg",
+    caption: "from sketch to suit. $BBALL is locked in.",
+    tags: ["lockedin", "shitpost", "transformation"],
+    aspect: 932 / 1022,
+  },
 
   // ----- Quote screenshots (real X posts) ---------------------------------
   {
