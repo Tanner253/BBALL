@@ -11,6 +11,8 @@ import { API_URL } from "@/lib/api";
 
 export type GhostPlayer = { id: string; name: string; x: number; y: number };
 
+export type ChatMsg = { id: number; name: string; text: string; ts: number };
+
 const SEND_MS = 90; // ~11Hz position stream (server broadcasts at 10Hz)
 
 type Ghost = {
@@ -28,6 +30,16 @@ let myId: string | null = null;
 let watching = 0;
 let lastSend = 0;
 const ghosts = new Map<string, Ghost>();
+
+// ---- Chat state (rolling log + subscription for React) ----
+let chatLog: ChatMsg[] = [];
+let chatError: string | null = null;
+const chatListeners = new Set<() => void>();
+const CHAT_MAX = 60;
+
+function notifyChat() {
+  for (const l of chatListeners) l();
+}
 
 export function connectLive() {
   if (typeof window === "undefined" || wanted) return;
@@ -56,6 +68,9 @@ function open() {
       id?: string;
       players?: GhostPlayer[];
       watching?: number;
+      messages?: ChatMsg[];
+      msg?: ChatMsg;
+      error?: string;
     };
     try {
       m = JSON.parse(String(e.data));
@@ -64,6 +79,16 @@ function open() {
     }
     if (m.t === "hello" && m.id) {
       myId = m.id;
+    } else if (m.t === "chat-history" && Array.isArray(m.messages)) {
+      chatLog = m.messages.slice(-CHAT_MAX);
+      notifyChat();
+    } else if (m.t === "chat" && m.msg) {
+      chatLog = [...chatLog, m.msg].slice(-CHAT_MAX);
+      chatError = null;
+      notifyChat();
+    } else if (m.t === "chat-err" && m.error) {
+      chatError = m.error;
+      notifyChat();
     } else if (m.t === "state" && Array.isArray(m.players)) {
       watching = m.watching ?? 0;
       const seen = new Set<string>();
@@ -126,4 +151,33 @@ export function sendLivePos(name: string, x: number, y: number) {
 
 export function sendLiveEnd() {
   if (ws?.readyState === 1) ws.send(JSON.stringify({ t: "end" }));
+}
+
+// ---- Chat API (used by ChatPanel) ----
+
+export function subscribeChat(cb: () => void): () => void {
+  chatListeners.add(cb);
+  return () => chatListeners.delete(cb);
+}
+
+/** Stable snapshot for useSyncExternalStore. */
+export function getChatLog(): ChatMsg[] {
+  return chatLog;
+}
+
+export function getChatError(): string | null {
+  return chatError;
+}
+
+export function clearChatError() {
+  if (chatError === null) return;
+  chatError = null;
+  notifyChat();
+}
+
+/** Returns false when the socket isn't ready (caller can show a hint). */
+export function sendChat(name: string, wallet: string, text: string): boolean {
+  if (!ws || ws.readyState !== 1) return false;
+  ws.send(JSON.stringify({ t: "chat", name, wallet, text: text.slice(0, 240) }));
+  return true;
 }

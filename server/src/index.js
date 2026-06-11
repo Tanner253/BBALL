@@ -160,7 +160,7 @@ app.get("/api/upgrades", readLimiter, async (req, res, next) => {
     const cycleId = currentCycleId();
     const [levels, balance] = await Promise.all([
       upgradeLevels(db, wallet, cycleId),
-      coinBalance(db, wallet, currentCoinCycleId()),
+      coinBalance(db, wallet, cycleId), // daily balance — resets 00:00 UTC
     ]);
     res.json({
       ok: true,
@@ -210,7 +210,7 @@ app.post("/api/upgrades", scoreLimiter, async (req, res, next) => {
     }
 
     const cost = UPGRADES[upgrade].costs[level];
-    const balance = await coinBalance(db, wallet, coinCycleId);
+    const balance = await coinBalance(db, wallet, cycleId); // daily balance
     if (balance < cost) {
       return res.status(400).json({ ok: false, error: `not enough coins (need ${cost})` });
     }

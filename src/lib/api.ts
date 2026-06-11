@@ -135,7 +135,7 @@ export async function fetchUpgrades(wallet: string): Promise<UpgradeState | null
   }
 }
 
-/** Buy one level of an upgrade. Coins come off the 48h coin-cycle balance. */
+/** Buy one level of an upgrade. Coins come off today's daily balance. */
 export async function buyUpgrade(payload: {
   wallet: string;
   playerKey: string;

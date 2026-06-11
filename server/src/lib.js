@@ -29,8 +29,8 @@ export const LIMITS = {
 
 /**
  * Daily upgrade catalog — source of truth for costs (client mirrors this in
- * src/lib/upgrades.ts; keep them in sync). Upgrades are bought with coins
- * from the current 48h coin-cycle balance and reset every UTC day.
+ * src/lib/upgrades.ts; keep them in sync). Upgrades are bought with today's
+ * coins (daily balance, resets 00:00 UTC) and reset every UTC day too.
  */
 export const UPGRADES = {
   dunk: { name: "Deeper Dunk", costs: [10, 30, 70] },
@@ -233,20 +233,22 @@ export async function upgradeLevels(db, wallet, cycleId) {
   return levels;
 }
 
-/** Spendable coins: collected minus spent within the current coin cycle. */
-export async function coinBalance(db, wallet, coinCycleId) {
+/** Spendable coins: collected minus spent within the current DAILY cycle.
+ *  Balances reset to 0 at 00:00 UTC along with upgrades; the 48h coin
+ *  leaderboard accrues separately (net of spending) via coinCycleId. */
+export async function coinBalance(db, wallet, cycleId) {
   const [collected, spent] = await Promise.all([
     db
       .collection("scores")
       .aggregate([
-        { $match: { coinCycleId, wallet } },
+        { $match: { cycleId, wallet } },
         { $group: { _id: null, n: { $sum: "$coins" } } },
       ])
       .toArray(),
     db
       .collection("purchases")
       .aggregate([
-        { $match: { coinCycleId, wallet } },
+        { $match: { cycleId, wallet } },
         { $group: { _id: null, n: { $sum: "$cost" } } },
       ])
       .toArray(),

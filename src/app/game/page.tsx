@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LaunchGame } from "@/components/game/LaunchGame";
 import { GlobalLeaderboard } from "@/components/game/GlobalLeaderboard";
 import { ChallengeBanner } from "@/components/game/ChallengeBanner";
+import { ChatPanel } from "@/components/game/ChatPanel";
 
 export const metadata: Metadata = {
   title: "Beachball Launch — $BBALL",
@@ -31,6 +32,10 @@ export default function GamePage() {
         <LaunchGame />
 
         <ChallengeBanner />
+
+        <div className="mt-6">
+          <ChatPanel />
+        </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px] items-start">
           <div className="grid gap-4 sm:grid-cols-3">

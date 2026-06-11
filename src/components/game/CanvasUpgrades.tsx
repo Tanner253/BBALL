@@ -114,7 +114,8 @@ export function CanvasUpgrades() {
           })}
         </div>
         <p className="mt-1.5 text-[8px] text-[var(--ink-mute)] leading-tight">
-          Spent coins come off your coin-board total. Resets 00:00 UTC.
+          Balance = today&apos;s coins. Spending also nets off your 48h coin board.
+          Everything resets 00:00 UTC.
         </p>
       </div>
     </div>

@@ -1,31 +1,43 @@
 /**
  * Live layer — every in-flight run streams its position here and everyone
- * sees everyone else's ball as a ghost on their canvas. Pure in-memory,
- * nothing touches the database.
+ * sees everyone else's ball as a ghost on their canvas, plus a global chat
+ * for signed-in players. Pure in-memory, nothing touches the database.
  *
  * Protocol (JSON):
- *   client -> server: { t: "pos", name, x, y }   (~10Hz while flying)
- *                     { t: "end" }               (run finished)
- *   server -> client: { t: "state", players: [{id,name,x,y}], watching }
- *                     (5Hz broadcast)
+ *   client -> server: { t: "pos", name, x, y }          (~10Hz while flying)
+ *                     { t: "end" }                      (run finished)
+ *                     { t: "chat", name, wallet, text } (signed-in players)
+ *   server -> client: { t: "hello", id }
+ *                     { t: "state", players: [{id,name,x,y}], watching }
+ *                     { t: "chat-history", messages }   (on connect)
+ *                     { t: "chat", msg }                (broadcast)
+ *                     { t: "chat-err", error }          (to sender only)
  */
 
 import { WebSocketServer } from "ws";
+import { sanitizeChat, cleanName, isSignedIn } from "./chat.js";
 
 const STALE_MS = 5000;
 const BROADCAST_MS = 100;
-const MAX_MSG_BYTES = 256;
+const MAX_MSG_BYTES = 700; // chat messages are bigger than pos updates
+const CHAT_HISTORY_MAX = 60;
+const CHAT_COOLDOWN_MS = 1500;
 
 export function attachLive(server) {
   const wss = new WebSocketServer({ server, path: "/live" });
   /** ws -> { name, x, y, at } for connections currently mid-run. */
   const flying = new Map();
+  /** Rolling global chat log, newest last. */
+  const chatLog = [];
   let nextId = 1;
+  let nextMsgId = 1;
 
   wss.on("connection", (ws) => {
     ws.liveId = String(nextId++);
+    ws.lastChatAt = 0;
     // Tell the client its own id so it can filter its echo exactly.
     ws.send(JSON.stringify({ t: "hello", id: ws.liveId }));
+    ws.send(JSON.stringify({ t: "chat-history", messages: chatLog }));
 
     ws.on("message", (buf) => {
       if (buf.length > MAX_MSG_BYTES) return;
@@ -37,20 +49,43 @@ export function attachLive(server) {
       }
       if (m?.t === "pos" && Number.isFinite(m.x) && Number.isFinite(m.y)) {
         flying.set(ws, {
-          name: String(m.name ?? "")
-            .replace(/[\u0000-\u001f\u007f]/g, "")
-            .slice(0, 18),
-          x: Math.max(0, Math.min(60000, m.x)),
-          y: Math.max(-10, Math.min(2000, m.y)),
+          name: cleanName(m.name),
+          x: Math.max(0, Math.min(1000000, m.x)),
+          y: Math.max(-10, Math.min(5000, m.y)),
           at: Date.now(),
         });
       } else if (m?.t === "end") {
         flying.delete(ws);
+      } else if (m?.t === "chat") {
+        handleChat(ws, m);
       }
     });
     ws.on("close", () => flying.delete(ws));
     ws.on("error", () => flying.delete(ws));
   });
+
+  function handleChat(ws, m) {
+    if (!isSignedIn(m.name, m.wallet)) {
+      ws.send(JSON.stringify({ t: "chat-err", error: "sign in with a name + wallet to chat" }));
+      return;
+    }
+    const now = Date.now();
+    if (now - ws.lastChatAt < CHAT_COOLDOWN_MS) {
+      ws.send(JSON.stringify({ t: "chat-err", error: "slow down a sec ⏳" }));
+      return;
+    }
+    const text = sanitizeChat(m.text);
+    if (!text) return;
+    ws.lastChatAt = now;
+
+    const msg = { id: nextMsgId++, name: cleanName(m.name), text, ts: now };
+    chatLog.push(msg);
+    if (chatLog.length > CHAT_HISTORY_MAX) chatLog.shift();
+    const payload = JSON.stringify({ t: "chat", msg });
+    for (const c of wss.clients) {
+      if (c.readyState === 1) c.send(payload);
+    }
+  }
 
   setInterval(() => {
     const now = Date.now();

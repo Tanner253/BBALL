@@ -229,7 +229,17 @@ export function LaunchGame() {
     };
     void refresh();
     window.addEventListener(UPGRADES_EVENT, refresh);
-    return () => window.removeEventListener(UPGRADES_EVENT, refresh);
+    // Upgrades reset for everyone at 00:00 UTC — re-sync just after rollover
+    // so a tab left open overnight doesn't keep yesterday's boosts.
+    const msToRollover = 86_400_000 - (Date.now() % 86_400_000) + 2000;
+    const rolloverTimer = setTimeout(
+      () => window.dispatchEvent(new Event(UPGRADES_EVENT)),
+      msToRollover
+    );
+    return () => {
+      window.removeEventListener(UPGRADES_EVENT, refresh);
+      clearTimeout(rolloverTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -305,7 +315,9 @@ export function LaunchGame() {
             ref={weatherRef}
             className="block font-mono text-[9px] sm:text-[10px] text-[var(--ink-mute)]"
           >
-            🌊 {GAME_WEATHER.label}
+            {/* Filled by the game loop — weather is clock-derived, so baking
+                it into the prerender would cause a hydration mismatch. */}
+            🌊 …
           </span>
           <span
             ref={liveCountRef}

@@ -1,8 +1,8 @@
 /**
  * Daily upgrade catalog — client mirror of server/src/lib.js UPGRADES
  * (server is the source of truth for costs; keep in sync). Upgrades are
- * bought with coins from the current 48h coin-cycle balance, last for the
- * current UTC day, and reset for everyone at 00:00 UTC.
+ * bought with today's coins (daily balance — resets to 0 at 00:00 UTC),
+ * last for the current UTC day, and reset for everyone at 00:00 UTC.
  */
 
 import type { Mods } from "@/components/game/engine";
