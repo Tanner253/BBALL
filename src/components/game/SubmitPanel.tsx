@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { isValidSolWallet, submitScore } from "@/lib/api";
-import { loadPlayer, savePlayer } from "@/lib/player";
+import { loadPlayer, loadPlayerKey, savePlayer } from "@/lib/player";
 
 export type RunResult = {
   distance: number;
@@ -49,7 +49,13 @@ export function SubmitPanel({
     }
     savePlayer(name, wallet);
     setStatus({ kind: "submitting" });
-    const res = await submitScore({ runToken, name, wallet, ...statsOf(result) });
+    const res = await submitScore({
+      runToken,
+      name,
+      wallet,
+      playerKey: loadPlayerKey() || undefined,
+      ...statsOf(result),
+    });
     if (res.ok) {
       setStatus({ kind: "done", rank: res.rank });
     } else {

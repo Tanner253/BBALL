@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LaunchGame } from "@/components/game/LaunchGame";
 import { GlobalLeaderboard } from "@/components/game/GlobalLeaderboard";
+import { UpgradeShop } from "@/components/game/UpgradeShop";
 
 export const metadata: Metadata = {
   title: "Beachball Launch — $BBALL",
@@ -27,6 +28,10 @@ export default function GamePage() {
 
         <LaunchGame />
 
+        <div className="mt-6">
+          <UpgradeShop />
+        </div>
+
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px] items-start">
           <div className="grid gap-4 sm:grid-cols-3">
             <HowTo
@@ -42,7 +47,7 @@ export default function GamePage() {
             <HowTo
               step="03"
               title="Collect"
-              body="Coins stack the 48h coin board. Orange rings boost, golden jetstreams launch you higher, satellites are space-tier. Dodge red candles and storm clouds."
+              body="Coins stack the 48h coin board. Rings, jetstreams, balloons, dolphins and geysers boost you; satellites are space-tier. Dodge candles, seagulls, storm clouds and UFOs."
             />
           </div>
 
@@ -69,9 +74,9 @@ export default function GamePage() {
           </div>
           <p className="mt-5 text-xs sm:text-sm text-[var(--ink-mute)] max-w-2xl mx-auto">
             Distance counts your single best run per wallet; coins count your total collected
-            across every submitted run in the cycle. Rewards are sent manually by the dev to
-            the Solana wallet you submit with your score — no wallet connect, no signatures,
-            ever.
+            across every submitted run in the cycle, minus anything you spend on daily
+            upgrades. Rewards are sent manually by the dev to the Solana wallet you submit
+            with your score — no wallet connect, no signatures, ever.
           </p>
         </section>
       </div>

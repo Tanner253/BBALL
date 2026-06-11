@@ -5,7 +5,7 @@
  * resolve CSS variables, so they are duplicated here intentionally).
  */
 
-import { AIM_SWEET, BALL_R, GameState, GRAVITY, launchSpeed, waveHeight } from "./engine";
+import { BALL_R, GameState, GRAVITY, launchSpeed, waveHeight } from "./engine";
 
 const C = {
   sky1: "#fff4d6",
@@ -36,17 +36,28 @@ function rnd(n: number): number {
   return x - Math.floor(x);
 }
 
+const CAM_K = 5.5; // camera smoothing rate (1/s)
+
 export function updateCamera(cam: Camera, s: GameState, w: number, h: number, dt: number) {
   const b = s.ball;
+  const speed = Math.hypot(b.vx, b.vy);
   const top = Math.max(11, b.y + 6);
   const bottom = -6;
-  const scale = Math.min(54, Math.max(4.2, h / (top - bottom)));
+  let scale = Math.min(54, Math.max(3.2, h / (top - bottom)));
+  // Zoom out with speed so fast runs always show enough road ahead —
+  // critical on narrow (mobile) viewports.
+  scale = Math.min(scale, w / Math.max(26, speed * 1.15));
+  scale = Math.max(scale, 3.2);
   const targetTop = bottom + h / scale;
-  const targetX = b.x - (w / scale) * 0.34;
-  const k = 1 - Math.exp(-dt * 5.5);
+  // Feed-forward by the smoothing lag (v/k) so the ball doesn't outrun the
+  // camera at high speed.
+  const targetX = b.x + b.vx / CAM_K - (w / scale) * 0.34;
+  const k = 1 - Math.exp(-dt * CAM_K);
   cam.scale += (scale - cam.scale) * k;
   cam.top += (targetTop - cam.top) * k;
   cam.x += (targetX - cam.x) * k;
+  // Hard guarantee: the ball never drifts past 72% of the viewport width.
+  cam.x = Math.max(cam.x, b.x - (w / cam.scale) * 0.72);
 }
 
 export function drawFrame(
@@ -337,6 +348,178 @@ function drawPickups(
         }
       }
       ctx.restore();
+    } else if (p.type === "dolphin") {
+      const py = sy(p.y + Math.abs(Math.sin(s.t * 1.8 + p.id)) * 1.2);
+      const r = scale * 1.1;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(-0.5 + Math.sin(s.t * 1.8 + p.id) * 0.3);
+      // Body: simple crescent.
+      ctx.fillStyle = "#5a8fb8";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.38, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Belly.
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.12, r * 0.8, r * 0.2, 0.2, 0, Math.PI);
+      ctx.fill();
+      // Dorsal fin.
+      ctx.fillStyle = "#4a7da3";
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.1, -r * 0.3);
+      ctx.lineTo(r * 0.15, -r * 0.85);
+      ctx.lineTo(r * 0.32, -r * 0.28);
+      ctx.closePath();
+      ctx.fill();
+      // Tail.
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.95, -r * 0.05);
+      ctx.lineTo(-r * 1.35, -r * 0.45);
+      ctx.lineTo(-r * 1.2, r * 0.18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (p.type === "geyser") {
+      const surf = sy(waveHeight(p.x, s.t));
+      const hgt = scale * (2.6 + Math.sin(s.t * 3 + p.id) * 0.4);
+      const wdt = scale * 0.5;
+      ctx.save();
+      // Rising water column.
+      const g = ctx.createLinearGradient(0, surf - hgt, 0, surf);
+      g.addColorStop(0, "rgba(255,255,255,0.9)");
+      g.addColorStop(0.4, "rgba(180,235,240,0.7)");
+      g.addColorStop(1, "rgba(111,224,213,0.35)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(px - wdt * 0.4, surf);
+      ctx.quadraticCurveTo(px - wdt * 0.8, surf - hgt * 0.6, px - wdt * 0.5, surf - hgt);
+      ctx.lineTo(px + wdt * 0.5, surf - hgt);
+      ctx.quadraticCurveTo(px + wdt * 0.8, surf - hgt * 0.6, px + wdt * 0.4, surf);
+      ctx.closePath();
+      ctx.fill();
+      // Foam crown.
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      for (let i = 0; i < 4; i++) {
+        const a = s.t * 4 + p.id + i * 1.7;
+        ctx.beginPath();
+        ctx.arc(
+          px + Math.sin(a) * wdt * 0.7,
+          surf - hgt - Math.abs(Math.cos(a)) * scale * 0.4,
+          scale * 0.16,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (p.type === "balloon") {
+      const py = sy(p.y + bob * 0.8);
+      const r = scale * 0.95;
+      ctx.save();
+      // String.
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.lineWidth = Math.max(1, scale * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(px, py + r);
+      ctx.quadraticCurveTo(px + r * 0.3, py + r * 1.8, px - r * 0.1, py + r * 2.5);
+      ctx.stroke();
+      // Body.
+      ctx.fillStyle = C.red;
+      ctx.shadowColor = "rgba(255,107,107,0.8)";
+      ctx.shadowBlur = r * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(px, py, r * 0.82, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Knot.
+      ctx.beginPath();
+      ctx.moveTo(px - r * 0.14, py + r * 0.95);
+      ctx.lineTo(px + r * 0.14, py + r * 0.95);
+      ctx.lineTo(px, py + r * 1.25);
+      ctx.closePath();
+      ctx.fill();
+      // Highlight.
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.beginPath();
+      ctx.ellipse(px - r * 0.3, py - r * 0.35, r * 0.2, r * 0.32, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (p.type === "bird") {
+      const py = sy(p.y + bob * 0.5);
+      const r = scale * 1.0;
+      const flap = Math.sin(s.t * 9 + p.id) * 0.5;
+      ctx.save();
+      ctx.translate(px, py);
+      // Body.
+      ctx.fillStyle = "#f3f5f8";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.55, r * 0.3, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Head + beak.
+      ctx.beginPath();
+      ctx.arc(r * 0.5, -r * 0.12, r * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = C.orange;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.68, -r * 0.16);
+      ctx.lineTo(r * 0.95, -r * 0.08);
+      ctx.lineTo(r * 0.68, -r * 0.02);
+      ctx.closePath();
+      ctx.fill();
+      // Wings (flapping).
+      ctx.strokeStyle = "#c8ccd4";
+      ctx.fillStyle = "#e3e7ec";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.1, 0);
+      ctx.quadraticCurveTo(-r * 0.5, -r * (0.9 + flap), -r * 1.1, -r * (0.5 + flap));
+      ctx.quadraticCurveTo(-r * 0.5, -r * 0.15, -r * 0.1, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Eye.
+      ctx.fillStyle = "#222";
+      ctx.beginPath();
+      ctx.arc(r * 0.55, -r * 0.18, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (p.type === "ufo") {
+      const py = sy(p.y + bob * 0.4);
+      const r = scale * 1.5;
+      ctx.save();
+      ctx.translate(px, py);
+      // Tractor beam.
+      const beam = ctx.createLinearGradient(0, 0, 0, r * 2.4);
+      beam.addColorStop(0, "rgba(111,224,150,0.4)");
+      beam.addColorStop(1, "rgba(111,224,150,0)");
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35, r * 0.2);
+      ctx.lineTo(r * 0.35, r * 0.2);
+      ctx.lineTo(r * 0.9, r * 2.4);
+      ctx.lineTo(-r * 0.9, r * 2.4);
+      ctx.closePath();
+      ctx.fill();
+      // Saucer.
+      ctx.fillStyle = "#9aa4b4";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Dome.
+      ctx.fillStyle = "rgba(170,230,255,0.85)";
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.2, r * 0.4, Math.PI, 0);
+      ctx.fill();
+      // Running lights.
+      for (let i = -2; i <= 2; i++) {
+        const on = (Math.floor(s.t * 5) + i) % 3 === 0;
+        ctx.fillStyle = on ? C.green : "rgba(255,255,255,0.5)";
+        ctx.beginPath();
+        ctx.arc(i * r * 0.38, r * 0.1, r * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     } else if (p.type === "storm") {
       const py = sy(p.y + bob * 0.4);
       const r = scale * 1.4;
@@ -487,9 +670,8 @@ function drawAim(
   const ox = sx(0);
   const oy = sy(0.4);
   const rad = (s.aimDeg * Math.PI) / 180;
-  const inSweet = s.aimDeg >= AIM_SWEET.min && s.aimDeg <= AIM_SWEET.max;
-  // Green when the angle is optimal — that's the "release now" signal.
-  const color = inSweet ? C.green : mix(C.yellow, C.orange, s.charge);
+  // Color tracks power: yellow → red as the meter peaks.
+  const color = mix(C.yellow, C.red, s.charge);
 
   // Trajectory preview: simulate the first moments of the flight using the
   // same launch math as the engine, so the dots are honest.
@@ -521,7 +703,7 @@ function drawAim(
   ctx.save();
   ctx.globalAlpha = 0.95;
   ctx.strokeStyle = color;
-  ctx.lineWidth = inSweet ? 6 : 4.5;
+  ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(ox, oy);

@@ -1,17 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   createInitialState,
+  DEFAULT_MODS,
   launch,
   Phase,
   startCharge,
   step,
   type GameState,
+  type Mods,
 } from "./engine";
 import { createCamera, drawFrame, updateCamera } from "./render";
 import { SubmitPanel, type RunResult } from "./SubmitPanel";
-import { startRun } from "@/lib/api";
+import {
+  ensureAudio,
+  getMutedServerSnapshot,
+  getMutedSnapshot,
+  playSfx,
+  setMuted,
+  subscribeMuted,
+} from "./sfx";
+import {
+  getMusicServerSnapshot,
+  getMusicSnapshot,
+  maybeStartMusic,
+  setMusicOn,
+  subscribeMusic,
+} from "./music";
+import { fetchUpgrades, startRun, UPGRADES_EVENT } from "@/lib/api";
+import { loadPlayer } from "@/lib/player";
+import { isValidSolWallet } from "@/lib/api";
+import { modsFrom } from "@/lib/upgrades";
 
 export function LaunchGame() {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -21,6 +41,8 @@ export function LaunchGame() {
   const holdingRef = useRef(false);
   // One-time server token proving when this run started (anti-cheat).
   const runTokenRef = useRef<string | null>(null);
+  // Daily-upgrade modifiers for the saved wallet (neutral until loaded).
+  const modsRef = useRef<Mods>(DEFAULT_MODS);
 
   // Fast-changing HUD numbers are written straight to the DOM (no re-render).
   const distRef = useRef<HTMLSpanElement>(null);
@@ -32,6 +54,16 @@ export function LaunchGame() {
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [result, setResult] = useState<RunResult | null>(null);
+  const soundOff = useSyncExternalStore(
+    subscribeMuted,
+    getMutedSnapshot,
+    getMutedServerSnapshot
+  );
+  const musicOn = useSyncExternalStore(
+    subscribeMusic,
+    getMusicSnapshot,
+    getMusicServerSnapshot
+  );
 
   // ---------------- Game loop ----------------
   useEffect(() => {
@@ -51,6 +83,12 @@ export function LaunchGame() {
       const s = stateRef.current;
 
       step(s, dt, holdingRef.current);
+
+      // Drain engine events into sound effects.
+      if (s.events.length) {
+        for (const e of s.events) playSfx(e);
+        s.events.length = 0;
+      }
 
       if (s.phase !== lastPhase) {
         lastPhase = s.phase;
@@ -110,6 +148,8 @@ export function LaunchGame() {
 
   // ---------------- Input ----------------
   const press = useCallback(() => {
+    ensureAudio();
+    maybeStartMusic();
     const s = stateRef.current;
     if (s.phase === "ready") startCharge(s);
     holdingRef.current = true;
@@ -126,6 +166,24 @@ export function LaunchGame() {
       });
     }
     holdingRef.current = false;
+  }, []);
+
+  // Load upgrade mods for the saved wallet; refresh after shop purchases
+  // and score submits (a submit may be the wallet's first registration).
+  useEffect(() => {
+    const refresh = async () => {
+      const { wallet } = loadPlayer();
+      if (!isValidSolWallet(wallet)) return;
+      const up = await fetchUpgrades(wallet);
+      if (!up) return;
+      modsRef.current = modsFrom(up.levels);
+      // Apply immediately unless a run is in progress.
+      const s = stateRef.current;
+      if (s.phase === "ready" || s.phase === "charging") s.mods = modsRef.current;
+    };
+    void refresh();
+    window.addEventListener(UPGRADES_EVENT, refresh);
+    return () => window.removeEventListener(UPGRADES_EVENT, refresh);
   }, []);
 
   useEffect(() => {
@@ -150,7 +208,7 @@ export function LaunchGame() {
   }, [press, release]);
 
   const reset = useCallback(() => {
-    stateRef.current = createInitialState();
+    stateRef.current = createInitialState(modsRef.current);
     camRef.current = createCamera();
     holdingRef.current = false;
     runTokenRef.current = null;
@@ -167,6 +225,9 @@ export function LaunchGame() {
       <canvas
         ref={canvasRef}
         className="absolute inset-0 h-full w-full"
+        // Blocks the iOS/Android long-press "save image" sheet on the canvas.
+        style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+        onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           e.preventDefault();
           press();
@@ -196,6 +257,31 @@ export function LaunchGame() {
         </div>
       </div>
 
+      {/* Audio toggles (top-right) */}
+      <div className="absolute right-3 top-3 sm:right-4 sm:top-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            ensureAudio();
+            setMusicOn(!musicOn);
+          }}
+          aria-label={musicOn ? "Turn music off" : "Turn music on"}
+          className={`glass rounded-2xl px-3 py-2 text-base leading-none hover:scale-105 active:scale-95 transition-transform ${
+            musicOn ? "" : "opacity-50"
+          }`}
+        >
+          <span aria-hidden>🎵</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMuted(!soundOff)}
+          aria-label={soundOff ? "Unmute sound" : "Mute sound"}
+          className="glass rounded-2xl px-3 py-2 text-base leading-none hover:scale-105 active:scale-95 transition-transform"
+        >
+          <span aria-hidden>{soundOff ? "🔇" : "🔊"}</span>
+        </button>
+      </div>
+
       {/* Perfect-skip flash */}
       <div
         ref={flashRef}
@@ -221,8 +307,8 @@ export function LaunchGame() {
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">
               power
             </span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ball-green)] font-bold">
-              release on green arrow
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ball-orange)] font-bold">
+              meters swing — time your release
             </span>
           </div>
           <div className="rounded-full bg-white/50 p-0.5">
@@ -247,13 +333,18 @@ export function LaunchGame() {
               <span aria-hidden>👈</span> Hold the ball under · release to launch
             </p>
             <p className="mt-1.5 text-xs text-[var(--ink-soft)] leading-relaxed">
-              Release when the arrow is <span className="font-semibold text-[var(--ball-green)]">green</span>.
-              Mid-air, <span className="font-semibold">hold</span> to dive — land shallow to{" "}
-              <span className="font-semibold">skip</span>. Chain{" "}
-              <span className="font-semibold text-[var(--ball-orange)]">rings</span> and{" "}
-              <span className="font-semibold text-[#9a6a00]">jetstreams</span> into space; dodge{" "}
-              <span className="font-semibold text-[var(--ball-red)]">candles</span> and{" "}
-              <span className="font-semibold text-[#5a6474]">storms</span>.
+              Power and angle <span className="font-semibold">swing on their own</span> — release
+              at the right moment. Mid-air, <span className="font-semibold">hold</span> to dive —
+              land shallow to <span className="font-semibold">skip</span>. Chain{" "}
+              <span className="font-semibold text-[var(--ball-orange)]">rings</span>,{" "}
+              <span className="font-semibold text-[#9a6a00]">jetstreams</span>,{" "}
+              <span className="font-semibold text-[#4a7da3]">dolphins</span>,{" "}
+              <span className="font-semibold text-[#1899a8]">geysers</span> &{" "}
+              <span className="font-semibold text-[var(--ball-red)]">balloons</span> into space;
+              dodge <span className="font-semibold text-[var(--ball-red)]">candles</span>,{" "}
+              <span className="font-semibold text-[#8a93a3]">seagulls</span>,{" "}
+              <span className="font-semibold text-[#5a6474]">storms</span> and{" "}
+              <span className="font-semibold text-[#39a86b]">UFOs</span>.
             </p>
           </div>
         </div>

@@ -18,6 +18,8 @@ import rateLimit from "express-rate-limit";
 import {
   PAYOUTS,
   COINS_PAYOUT,
+  UPGRADES,
+  MAX_UPGRADE_LEVEL,
   getDb,
   currentCycleId,
   cycleEndsAt,
@@ -25,6 +27,12 @@ import {
   coinCycleEndsAt,
   validateScore,
   minPlausibleSeconds,
+  isValidWallet,
+  isValidPlayerKey,
+  claimWallet,
+  upgradeLevels,
+  coinBalance,
+  spentByWallet,
 } from "./lib.js";
 
 const app = express();
@@ -92,6 +100,12 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
       return res.status(400).json({ ok: false, error: "run rejected: implausible time" });
     }
 
+    // Soft-claim the wallet for this device so its coins are purchase-safe.
+    // A mismatch doesn't block score submits (extra coins can't hurt anyone).
+    if (isValidPlayerKey(req.body?.playerKey)) {
+      await claimWallet(db, value.wallet, req.body.playerKey);
+    }
+
     const cycleId = currentCycleId();
     const scores = db.collection("scores");
     await scores.insertOne({
@@ -120,8 +134,95 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
   }
 });
 
+/** Current upgrade levels + spendable coin balance for a wallet. */
+app.get("/api/upgrades", readLimiter, async (req, res, next) => {
+  try {
+    const wallet = String(req.query.wallet ?? "").trim();
+    if (!isValidWallet(wallet)) {
+      return res.status(400).json({ ok: false, error: "invalid wallet" });
+    }
+    const db = await getDb();
+    const cycleId = currentCycleId();
+    const [levels, balance] = await Promise.all([
+      upgradeLevels(db, wallet, cycleId),
+      coinBalance(db, wallet, currentCoinCycleId()),
+    ]);
+    res.json({
+      ok: true,
+      cycleId,
+      endsAt: cycleEndsAt(),
+      levels,
+      balance,
+      catalog: UPGRADES,
+      maxLevel: MAX_UPGRADE_LEVEL,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Buy one level of an upgrade with coins from the current coin cycle. */
+app.post("/api/upgrades", scoreLimiter, async (req, res, next) => {
+  try {
+    const wallet = String(req.body?.wallet ?? "").trim();
+    const upgrade = String(req.body?.upgrade ?? "");
+    const playerKey = req.body?.playerKey;
+    if (!isValidWallet(wallet)) {
+      return res.status(400).json({ ok: false, error: "invalid wallet" });
+    }
+    if (!(upgrade in UPGRADES)) {
+      return res.status(400).json({ ok: false, error: "unknown upgrade" });
+    }
+
+    const db = await getDb();
+    const claim = await claimWallet(db, wallet, playerKey);
+    if (claim !== "ok") {
+      return res.status(403).json({
+        ok: false,
+        error:
+          claim === "mismatch"
+            ? "this wallet's coins belong to another device — submit a run from this device first or contact the dev"
+            : "invalid player key",
+      });
+    }
+
+    const cycleId = currentCycleId();
+    const coinCycleId = currentCoinCycleId();
+    const levels = await upgradeLevels(db, wallet, cycleId);
+    const level = levels[upgrade];
+    if (level >= MAX_UPGRADE_LEVEL) {
+      return res.status(400).json({ ok: false, error: "upgrade already maxed" });
+    }
+
+    const cost = UPGRADES[upgrade].costs[level];
+    const balance = await coinBalance(db, wallet, coinCycleId);
+    if (balance < cost) {
+      return res.status(400).json({ ok: false, error: `not enough coins (need ${cost})` });
+    }
+
+    // Unique index on (wallet, upgrade, cycleId, level) kills double-buys.
+    await db.collection("purchases").insertOne({
+      wallet,
+      upgrade,
+      level: level + 1,
+      cost,
+      cycleId,
+      coinCycleId,
+      createdAt: new Date(),
+    });
+
+    levels[upgrade] = level + 1;
+    res.json({ ok: true, levels, balance: balance - cost });
+  } catch (e) {
+    if (e?.code === 11000) {
+      return res.status(409).json({ ok: false, error: "purchase already in flight — refresh" });
+    }
+    next(e);
+  }
+});
+
 /** Both boards: distance (daily, best run per wallet) and coins (48h, total
- *  collected per wallet). */
+ *  collected minus coins spent on upgrades per wallet). */
 app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
   try {
     const db = await getDb();
@@ -129,7 +230,7 @@ app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
     const cycleId = currentCycleId();
     const coinCycleId = currentCoinCycleId();
 
-    const [distanceTop, coinsTop] = await Promise.all([
+    const [distanceTop, coinsRaw, spent] = await Promise.all([
       scores
         .aggregate([
           { $match: { cycleId } },
@@ -155,11 +256,18 @@ app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
             },
           },
           { $sort: { coins: -1, bestDistance: -1 } },
-          { $limit: 25 },
+          { $limit: 100 },
           { $project: { _id: 0, wallet: "$_id", name: 1, coins: 1, runs: 1, bestDistance: 1 } },
         ])
         .toArray(),
+      spentByWallet(db, coinCycleId),
     ]);
+
+    // Coin standings are net of upgrade spending — buying power costs rank.
+    const coinsTop = coinsRaw
+      .map((r) => ({ ...r, coins: r.coins - (spent.get(`${coinCycleId}|${r.wallet}`) ?? 0) }))
+      .sort((a, b) => b.coins - a.coins || b.bestDistance - a.bestDistance)
+      .slice(0, 25);
 
     res.json({
       distance: { cycleId, endsAt: cycleEndsAt(), payouts: PAYOUTS, top: distanceTop },
@@ -176,7 +284,7 @@ app.get("/api/winners", readLimiter, async (_req, res, next) => {
     const db = await getDb();
     const scores = db.collection("scores");
 
-    const [distance, coins] = await Promise.all([
+    const [distance, coinsRows, spent] = await Promise.all([
       scores
         .aggregate([
           { $match: { cycleId: { $ne: currentCycleId() } } },
@@ -205,19 +313,26 @@ app.get("/api/winners", readLimiter, async (_req, res, next) => {
               coins: { $sum: "$coins" },
             },
           },
-          { $sort: { coins: -1 } },
-          {
-            $group: {
-              _id: "$_id.c",
-              winner: { $first: { name: "$name", wallet: "$_id.w", coins: "$coins" } },
-            },
-          },
-          { $project: { _id: 0, cycleId: "$_id", winner: 1 } },
-          { $sort: { cycleId: -1 } },
-          { $limit: 7 },
         ])
         .toArray(),
+      spentByWallet(db, null),
     ]);
+
+    // Net out upgrade spending, then pick each past coin cycle's winner.
+    const byCycle = new Map();
+    for (const r of coinsRows) {
+      const net = r.coins - (spent.get(`${r._id.c}|${r._id.w}`) ?? 0);
+      const cur = byCycle.get(r._id.c);
+      if (!cur || net > cur.winner.coins) {
+        byCycle.set(r._id.c, {
+          cycleId: r._id.c,
+          winner: { name: r.name, wallet: r._id.w, coins: net },
+        });
+      }
+    }
+    const coins = [...byCycle.values()]
+      .sort((a, b) => (a.cycleId < b.cycleId ? 1 : -1))
+      .slice(0, 7);
 
     res.json({ payouts: PAYOUTS, coinsPayout: COINS_PAYOUT, distance, coins });
   } catch (e) {
