@@ -81,7 +81,8 @@ export default function GamePage() {
             Distance counts your single best run per wallet; coins count your total collected
             across every submitted run in the cycle, minus anything you spend on daily
             upgrades. Rewards are sent manually by the dev to the Solana wallet you submit
-            with your score — no wallet connect, no signatures, ever.
+            with your score — allow up to 24 hours after the cycle ends. Paid cycles are
+            marked ✅ in the Payouts tab. No wallet connect, no signatures, ever.
           </p>
         </section>
       </div>

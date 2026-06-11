@@ -42,8 +42,16 @@ export type Leaderboard = {
 export type Winners = {
   payouts: number[];
   coinsPayout: number;
-  distance: { cycleId: string; top: { name: string; wallet: string; distance: number }[] }[];
-  coins: { cycleId: string; winner: { name: string; wallet: string; coins: number } }[];
+  distance: {
+    cycleId: string;
+    paid: boolean;
+    top: { name: string; wallet: string; distance: number }[];
+  }[];
+  coins: {
+    cycleId: string;
+    paid: boolean;
+    winner: { name: string; wallet: string; coins: number };
+  }[];
 };
 
 export type ScoreSubmission = {

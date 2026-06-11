@@ -137,7 +137,7 @@ export function SubmitPanel({
         </div>
         <p className="mt-3 text-[10px] text-[var(--ink-mute)]">
           Distance: top 3 daily earn 100k / 50k / 25k $BBALL. Coins: top collector every 48h
-          gets paid too. Manual payouts by the dev.
+          gets paid too. Manual payouts by the dev within 24h of cycle end.
         </p>
       </div>
     </div>

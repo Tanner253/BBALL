@@ -293,13 +293,14 @@ app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
   }
 });
 
-/** Past winners for both competitions — the dev pays these out manually. */
+/** Past winners for both competitions — the dev pays these out manually
+ *  (within 24h); paid cycles are marked via the admin endpoint below. */
 app.get("/api/winners", readLimiter, async (_req, res, next) => {
   try {
     const db = await getDb();
     const scores = db.collection("scores");
 
-    const [distance, coinsRows, spent] = await Promise.all([
+    const [distance, coinsRows, spent, paidRows] = await Promise.all([
       scores
         .aggregate([
           { $match: { cycleId: { $ne: currentCycleId() } } },
@@ -331,7 +332,11 @@ app.get("/api/winners", readLimiter, async (_req, res, next) => {
         ])
         .toArray(),
       spentByWallet(db, null),
+      db.collection("payouts").find({}).toArray(),
     ]);
+
+    // Paid markers, set manually by the dev once $BBALL has been sent.
+    const paid = new Map(paidRows.map((p) => [`${p.kind}|${p.cycleId}`, p.paidAt]));
 
     // Net out upgrade spending, then pick each past coin cycle's winner.
     const byCycle = new Map();
@@ -347,9 +352,45 @@ app.get("/api/winners", readLimiter, async (_req, res, next) => {
     }
     const coins = [...byCycle.values()]
       .sort((a, b) => (a.cycleId < b.cycleId ? 1 : -1))
-      .slice(0, 7);
+      .slice(0, 7)
+      .map((c) => ({ ...c, paid: paid.has(`coins|${c.cycleId}`) }));
 
-    res.json({ payouts: PAYOUTS, coinsPayout: COINS_PAYOUT, distance, coins });
+    res.json({
+      payouts: PAYOUTS,
+      coinsPayout: COINS_PAYOUT,
+      distance: distance.map((d) => ({ ...d, paid: paid.has(`distance|${d.cycleId}`) })),
+      coins,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Admin: mark a cycle's payout as completed (or undo). Requires ADMIN_KEY
+ * env var on the server; disabled when unset.
+ *   POST /api/admin/payouts { key, kind: "distance"|"coins", cycleId, undo? }
+ */
+app.post("/api/admin/payouts", scoreLimiter, async (req, res, next) => {
+  try {
+    const adminKey = process.env.ADMIN_KEY;
+    if (!adminKey || req.body?.key !== adminKey) {
+      return res.status(403).json({ ok: false, error: "unauthorized" });
+    }
+    const kind = req.body?.kind;
+    const cycleId = String(req.body?.cycleId ?? "");
+    if (!["distance", "coins"].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(cycleId)) {
+      return res.status(400).json({ ok: false, error: "invalid kind or cycleId" });
+    }
+    const db = await getDb();
+    if (req.body?.undo) {
+      await db.collection("payouts").deleteOne({ kind, cycleId });
+    } else {
+      await db
+        .collection("payouts")
+        .updateOne({ kind, cycleId }, { $set: { kind, cycleId, paidAt: new Date() } }, { upsert: true });
+    }
+    res.json({ ok: true, kind, cycleId, paid: !req.body?.undo });
   } catch (e) {
     next(e);
   }

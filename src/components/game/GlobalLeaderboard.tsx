@@ -112,8 +112,10 @@ export function GlobalLeaderboard() {
           </>
         ) : (
           <>
-            Finished cycles awaiting manual payout —{" "}
-            <span className="font-semibold text-[var(--ink-soft)]">tap a wallet to copy it</span>.
+            Winners are paid manually{" "}
+            <span className="font-semibold text-[var(--ink-soft)]">within 24 hours</span> of the
+            cycle ending — paid cycles get the ✅.{" "}
+            <span className="font-semibold text-[var(--ink-soft)]">Tap a wallet to copy it</span>.
           </>
         )}
       </p>
@@ -288,8 +290,8 @@ function PayoutsList({ winners }: { winners: Winners | null }) {
           key={`d-${c.cycleId}`}
           className="rounded-2xl bg-white/45 border border-white/60 px-3 py-2"
         >
-          <p className="font-mono text-[10px] text-[var(--ink-mute)]">
-            🚀 {c.cycleId} · distance
+          <p className="font-mono text-[10px] text-[var(--ink-mute)] flex items-center gap-2">
+            🚀 {c.cycleId} · distance <PaidBadge paid={c.paid} />
           </p>
           <div className="mt-1 flex flex-col gap-1">
             {c.top.map((wn, i) => (
@@ -313,7 +315,9 @@ function PayoutsList({ winners }: { winners: Winners | null }) {
           key={`c-${c.cycleId}`}
           className="rounded-2xl bg-white/45 border border-white/60 px-3 py-2"
         >
-          <p className="font-mono text-[10px] text-[var(--ink-mute)]">💰 {c.cycleId} · coins</p>
+          <p className="font-mono text-[10px] text-[var(--ink-mute)] flex items-center gap-2">
+            💰 {c.cycleId} · coins <PaidBadge paid={c.paid} />
+          </p>
           <div className="mt-1 flex items-center gap-2 text-xs min-w-0">
             <span aria-hidden>🥇</span>
             <span className="font-medium text-[var(--ink)] truncate">{c.winner.name}</span>
@@ -326,6 +330,18 @@ function PayoutsList({ winners }: { winners: Winners | null }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function PaidBadge({ paid }: { paid: boolean }) {
+  return paid ? (
+    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-[#2c9c5e]/15 text-[#1f7a47]">
+      ✅ paid
+    </span>
+  ) : (
+    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-[var(--ball-yellow)]/30 text-[#8a6d00]">
+      ⏳ pending · within 24h
+    </span>
   );
 }
 
