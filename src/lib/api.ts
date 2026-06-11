@@ -3,11 +3,13 @@
  * Dev hits localhost; QA/preview + Prod use NEXT_PUBLIC_API_URL set in Vercel.
  */
 
-export const API_URL =
+// trim() guards against stray whitespace/newlines sneaking into the env value.
+export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "development"
     ? "http://localhost:4000"
-    : "https://bball-api.onrender.com");
+    : "https://bball-api.onrender.com")
+).trim();
 
 /** Fired on window after a successful score submit so panels refresh. */
 export const SCORES_EVENT = "bball:scores-updated";
