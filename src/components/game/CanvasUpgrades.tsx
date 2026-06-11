@@ -21,7 +21,7 @@ export function CanvasUpgrades() {
   // hiding it (mobile players especially would never discover it).
   if (!state) {
     return (
-      <div className="glass absolute left-3 top-[104px] sm:left-4 rounded-2xl px-3 py-2 max-w-[190px] pointer-events-none opacity-80">
+      <div className="glass absolute left-3 top-[128px] sm:left-4 sm:top-[140px] rounded-2xl px-3 py-2 max-w-[190px] pointer-events-none opacity-80">
         <p className="text-[11px] font-bold text-[var(--ink)] leading-none">🛠 Upgrades 🔒</p>
         <p className="mt-1 text-[9px] text-[var(--ink-soft)] leading-tight">
           Submit a run with your Solana wallet to unlock the daily coin shop.
@@ -35,7 +35,7 @@ export function CanvasUpgrades() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="glass absolute left-3 top-[104px] sm:left-4 rounded-2xl px-3 py-2 text-xs font-bold text-[var(--ink)] hover:scale-105 active:scale-95 transition-transform"
+        className="glass absolute left-3 top-[128px] sm:left-4 sm:top-[140px] rounded-2xl px-3 py-2 text-xs font-bold text-[var(--ink)] hover:scale-105 active:scale-95 transition-transform"
       >
         🛠 Upgrades <span className="font-mono text-[10px]">(${state.balance})</span>
       </button>
@@ -43,7 +43,7 @@ export function CanvasUpgrades() {
   }
 
   return (
-    <div className="absolute left-3 top-[104px] bottom-3 sm:left-4 w-[240px] pointer-events-none">
+    <div className="absolute left-3 top-[128px] bottom-3 sm:left-4 sm:top-[140px] w-[240px] pointer-events-none">
       <div className="glass rounded-2xl p-3 max-h-full overflow-y-auto pointer-events-auto">
         <div className="flex items-baseline justify-between gap-2">
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">
