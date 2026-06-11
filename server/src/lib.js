@@ -5,8 +5,12 @@
 
 import { MongoClient } from "mongodb";
 
-/** $BBALL paid to the top 3 of each 24h cycle (manually, by the dev). */
+/** $BBALL paid to the top 3 distance runners of each 24h cycle (manual). */
 export const PAYOUTS = [100000, 50000, 25000];
+
+/** $BBALL paid to the single top coin collector of each 48h coin cycle.
+ *  TODO(owner): confirm the amount — placeholder until then. */
+export const COINS_PAYOUT = 50000;
 
 /** Hard sanity caps — anything beyond these is a rejected run. */
 export const LIMITS = {
@@ -15,8 +19,9 @@ export const LIMITS = {
   maxSkips: 2000,
   maxCombo: 500,
   nameMax: 18,
-  /** Max plausible average horizontal speed (m/s), generous headroom. */
-  maxAvgSpeed: 90,
+  /** Max plausible average horizontal speed (m/s), generous headroom.
+   *  Space runs ride thin air + satellite boosts, so this is roomy. */
+  maxAvgSpeed: 130,
 };
 
 const SOL_WALLET_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -40,6 +45,7 @@ export async function getDb() {
           db.collection("runs").createIndex({ issuedAt: 1 }, { expireAfterSeconds: 3600 }),
           db.collection("scores").createIndex({ cycleId: 1, distance: -1 }),
           db.collection("scores").createIndex({ cycleId: 1, wallet: 1 }),
+          db.collection("scores").createIndex({ coinCycleId: 1, wallet: 1 }),
         ]);
         return db;
       })
@@ -60,6 +66,22 @@ export function cycleEndsAt(d = new Date()) {
   return new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)
   ).toISOString();
+}
+
+const DAY_MS = 86_400_000;
+
+/** Coin cycles are 48h buckets aligned to even UTC days since epoch.
+ *  Id is the ISO date of the cycle's first day, e.g. "2026-06-10". */
+export function currentCoinCycleId(d = new Date()) {
+  const days = Math.floor(d.getTime() / DAY_MS);
+  const start = days - (days % 2);
+  return new Date(start * DAY_MS).toISOString().slice(0, 10);
+}
+
+export function coinCycleEndsAt(d = new Date()) {
+  const days = Math.floor(d.getTime() / DAY_MS);
+  const start = days - (days % 2);
+  return new Date((start + 2) * DAY_MS).toISOString();
 }
 
 /**

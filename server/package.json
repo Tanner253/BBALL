@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch --env-file-if-exists=.env src/index.js"
+    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "build": "echo \"no build step (plain Node server)\""
   },
   "dependencies": {
     "cors": "^2.8.6",

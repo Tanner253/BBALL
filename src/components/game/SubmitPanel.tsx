@@ -121,8 +121,8 @@ export function SubmitPanel({
           </button>
         </div>
         <p className="mt-3 text-[10px] text-[var(--ink-mute)]">
-          Daily cycle resets 00:00 UTC · top 3 earn 100k / 50k / 25k $BBALL, paid manually
-          by the dev.
+          Distance: top 3 daily earn 100k / 50k / 25k $BBALL. Coins: top collector every 48h
+          gets paid too. Manual payouts by the dev.
         </p>
       </div>
     </div>

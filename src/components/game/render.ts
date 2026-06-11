@@ -5,7 +5,7 @@
  * resolve CSS variables, so they are duplicated here intentionally).
  */
 
-import { BALL_R, GameState, waveHeight } from "./engine";
+import { AIM_SWEET, BALL_R, GameState, GRAVITY, launchSpeed, waveHeight } from "./engine";
 
 const C = {
   sky1: "#fff4d6",
@@ -61,6 +61,7 @@ export function drawFrame(
 
   drawSky(ctx, cam, w, h);
   drawSun(ctx, cam, w, h);
+  drawMoon(ctx, cam, w, h);
   drawClouds(ctx, cam, w, h, sy);
   drawWater(ctx, s, cam, w, h, sy, 0.8);
   drawMarkers(ctx, s, cam, w, sx, sy);
@@ -128,6 +129,36 @@ function drawSun(ctx: CanvasRenderingContext2D, cam: Camera, w: number, h: numbe
   ctx.beginPath();
   ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawMoon(ctx: CanvasRenderingContext2D, cam: Camera, w: number, h: number) {
+  // Only visible once you're properly heading to space.
+  const vis = Math.min(1, Math.max(0, (cam.top - 80) / 60));
+  if (vis <= 0) return;
+  const px = w * 0.22;
+  const py = h * 0.12;
+  const r = Math.min(w, h) * 0.05;
+  ctx.save();
+  ctx.globalAlpha = vis;
+  const g = ctx.createRadialGradient(px - r * 0.3, py - r * 0.3, r * 0.2, px, py, r);
+  g.addColorStop(0, "#f7f4ea");
+  g.addColorStop(1, "#b9b6ad");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fill();
+  // A few craters.
+  ctx.fillStyle = "rgba(120,118,110,0.35)";
+  for (const [dx, dy, cr] of [
+    [-0.3, 0.1, 0.18],
+    [0.25, -0.2, 0.12],
+    [0.1, 0.35, 0.1],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(px + dx * r, py + dy * r, cr * r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawClouds(
@@ -281,17 +312,75 @@ function drawPickups(
       ctx.textBaseline = "middle";
       ctx.fillText("$", px, py + r * 0.06);
       ctx.restore();
-    } else if (p.type === "ring") {
+    } else if (p.type === "ring" || p.type === "jet") {
       const py = sy(p.y + bob);
-      const r = scale * 1.5;
+      const jet = p.type === "jet";
+      const r = scale * (jet ? 1.9 : 1.5);
+      const color = jet ? C.yellow : C.orange;
       ctx.save();
-      ctx.shadowColor = "rgba(255,138,43,0.9)";
+      ctx.shadowColor = jet ? "rgba(255,217,61,0.95)" : "rgba(255,138,43,0.9)";
       ctx.shadowBlur = r * 0.5;
-      ctx.strokeStyle = C.orange;
-      ctx.lineWidth = Math.max(3, scale * 0.3);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(3, scale * (jet ? 0.34 : 0.3));
       ctx.beginPath();
       ctx.ellipse(px, py, r * 0.55, r, 0, 0, Math.PI * 2);
       ctx.stroke();
+      if (jet) {
+        // Speed streaks behind the jetstream ring.
+        ctx.globalAlpha = 0.5;
+        ctx.lineWidth = Math.max(2, scale * 0.12);
+        for (const off of [-0.6, 0, 0.6]) {
+          ctx.beginPath();
+          ctx.moveTo(px - r * 1.6, py + off * r * 0.5);
+          ctx.lineTo(px - r * 0.7, py + off * r * 0.5);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    } else if (p.type === "storm") {
+      const py = sy(p.y + bob * 0.4);
+      const r = scale * 1.4;
+      ctx.save();
+      ctx.fillStyle = "rgba(90,100,116,0.92)";
+      cloudPuff(ctx, px, py, r * 0.8);
+      ctx.fillStyle = "rgba(62,72,88,0.9)";
+      cloudPuff(ctx, px + r * 0.2, py + r * 0.28, r * 0.62);
+      // Lightning bolt.
+      ctx.strokeStyle = C.yellow;
+      ctx.lineWidth = Math.max(2, scale * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(px - r * 0.1, py + r * 0.5);
+      ctx.lineTo(px - r * 0.35, py + r * 1.05);
+      ctx.lineTo(px - r * 0.05, py + r * 1.0);
+      ctx.lineTo(px - r * 0.3, py + r * 1.6);
+      ctx.stroke();
+      ctx.restore();
+    } else if (p.type === "sat") {
+      const py = sy(p.y + bob * 0.3);
+      const r = scale * 0.9;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(Math.sin(s.t * 0.6 + p.id) * 0.25);
+      // Solar panels.
+      ctx.fillStyle = C.blue;
+      ctx.fillRect(-r * 2.2, -r * 0.45, r * 1.4, r * 0.9);
+      ctx.fillRect(r * 0.8, -r * 0.45, r * 1.4, r * 0.9);
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-r * 2.2, -r * 0.45, r * 1.4, r * 0.9);
+      ctx.strokeRect(r * 0.8, -r * 0.45, r * 1.4, r * 0.9);
+      // Body.
+      ctx.fillStyle = "#d8dde6";
+      ctx.fillRect(-r * 0.7, -r * 0.6, r * 1.4, r * 1.2);
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.strokeRect(-r * 0.7, -r * 0.6, r * 1.4, r * 1.2);
+      // Glow so it reads as a pickup.
+      ctx.shadowColor = "rgba(255,255,255,0.9)";
+      ctx.shadowBlur = r;
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.9, r * 0.16, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     } else {
       // Red candle buoy — the enemy of every chart.
@@ -398,28 +487,54 @@ function drawAim(
   const ox = sx(0);
   const oy = sy(0.4);
   const rad = (s.aimDeg * Math.PI) / 180;
-  const len = 56 + 110 * s.charge;
+  const inSweet = s.aimDeg >= AIM_SWEET.min && s.aimDeg <= AIM_SWEET.max;
+  // Green when the angle is optimal — that's the "release now" signal.
+  const color = inSweet ? C.green : mix(C.yellow, C.orange, s.charge);
+
+  // Trajectory preview: simulate the first moments of the flight using the
+  // same launch math as the engine, so the dots are honest.
+  const speed = launchSpeed(s.charge);
+  let px = 0;
+  let py = 0.3;
+  let vx = Math.cos(rad) * speed;
+  let vy = Math.sin(rad) * speed;
+  ctx.save();
+  ctx.fillStyle = color;
+  const dt = 0.07;
+  for (let i = 0; i < 18; i++) {
+    px += vx * dt;
+    py += vy * dt;
+    vy -= GRAVITY * dt;
+    if (py < 0) break;
+    ctx.globalAlpha = 0.85 * (1 - i / 18);
+    const r = 5.5 * (1 - i / 26);
+    ctx.beginPath();
+    ctx.arc(sx(px), sy(py), r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Main aim arrow.
+  const len = 64 + 110 * s.charge;
   const ex = ox + Math.cos(rad) * len;
   const ey = oy - Math.sin(rad) * len;
-
   ctx.save();
-  ctx.strokeStyle = mix(C.yellow, C.red, s.charge);
-  ctx.lineWidth = 4;
-  ctx.setLineDash([10, 7]);
-  ctx.lineDashOffset = -s.t * 40;
+  ctx.globalAlpha = 0.95;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = inSweet ? 6 : 4.5;
+  ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(ox, oy);
   ctx.lineTo(ex, ey);
   ctx.stroke();
-  ctx.setLineDash([]);
   // Arrowhead.
-  ctx.fillStyle = mix(C.yellow, C.red, s.charge);
+  ctx.fillStyle = color;
   ctx.translate(ex, ey);
   ctx.rotate(-rad);
   ctx.beginPath();
-  ctx.moveTo(14, 0);
-  ctx.lineTo(-6, -8);
-  ctx.lineTo(-6, 8);
+  ctx.moveTo(18, 0);
+  ctx.lineTo(-7, -10);
+  ctx.lineTo(-7, 10);
   ctx.closePath();
   ctx.fill();
   ctx.restore();

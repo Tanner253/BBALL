@@ -14,7 +14,7 @@ export const API_URL = (
 /** Fired on window after a successful score submit so panels refresh. */
 export const SCORES_EVENT = "bball:scores-updated";
 
-export type LeaderboardEntry = {
+export type DistanceEntry = {
   name: string;
   wallet: string;
   distance: number;
@@ -23,16 +23,24 @@ export type LeaderboardEntry = {
   bestCombo: number;
 };
 
-export type Leaderboard = {
-  cycleId: string;
-  endsAt: string;
-  payouts: number[];
-  top: LeaderboardEntry[];
+export type CoinsEntry = {
+  name: string;
+  wallet: string;
+  coins: number;
+  runs: number;
+  bestDistance: number;
 };
 
-export type CycleWinners = {
-  cycleId: string;
-  top: { name: string; wallet: string; distance: number }[];
+export type Leaderboard = {
+  distance: { cycleId: string; endsAt: string; payouts: number[]; top: DistanceEntry[] };
+  coins: { cycleId: string; endsAt: string; payout: number; top: CoinsEntry[] };
+};
+
+export type Winners = {
+  payouts: number[];
+  coinsPayout: number;
+  distance: { cycleId: string; top: { name: string; wallet: string; distance: number }[] }[];
+  coins: { cycleId: string; winner: { name: string; wallet: string; coins: number } }[];
 };
 
 export type ScoreSubmission = {
@@ -97,12 +105,11 @@ export async function fetchLeaderboard(): Promise<Leaderboard | null> {
   }
 }
 
-export async function fetchWinners(): Promise<CycleWinners[] | null> {
+export async function fetchWinners(): Promise<Winners | null> {
   try {
     const res = await fetch(`${API_URL}/api/winners`, { cache: "no-store" });
     if (!res.ok) return null;
-    const data = await res.json();
-    return Array.isArray(data?.cycles) ? data.cycles : null;
+    return await res.json();
   } catch {
     return null;
   }

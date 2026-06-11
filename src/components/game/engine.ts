@@ -7,7 +7,13 @@
 
 export type Phase = "ready" | "charging" | "flying" | "settling" | "over";
 
-export type PickupType = "coin" | "ring" | "candle";
+export type PickupType =
+  | "coin" // +1 coin, tiny speed nudge
+  | "ring" // orange boost ring (low altitude)
+  | "jet" // golden jetstream ring (high altitude, bigger boost)
+  | "storm" // grey storm cloud — sky obstacle, kills momentum
+  | "sat" // satellite — space-level mega boost + bonus coins
+  | "candle"; // red candle buoy on the water — classic momentum killer
 
 export type Pickup = {
   id: number;
@@ -49,11 +55,21 @@ export type GameState = {
   pickups: Pickup[];
   particles: Particle[];
   nextSpawnX: number;
+  /** X position where the next coin word (LMAO / $BBALL) appears. */
+  nextWordX: number;
+  wordIndex: number;
   nextId: number;
 };
 
 export const BALL_R = 0.9;
-const GRAVITY = 24;
+export const GRAVITY = 24;
+/** Optimal release window for the sweeping aim arrow (degrees). */
+export const AIM_SWEET = { min: 38, max: 52 };
+
+/** Launch speed (m/s) for a given charge — shared with the aim preview. */
+export function launchSpeed(charge: number): number {
+  return 26 + 62 * Math.pow(charge, 0.85);
+}
 const DIVE_ACCEL = 52;
 const AIR_DRAG = 0.038;
 const CHARGE_TIME = 2.4; // seconds to full power
@@ -81,6 +97,8 @@ export function createInitialState(): GameState {
     pickups: [],
     particles: [],
     nextSpawnX: 25,
+    nextWordX: 180,
+    wordIndex: 0,
     nextId: 1,
   };
 }
@@ -102,7 +120,7 @@ export function launch(s: GameState) {
   if (s.phase !== "charging") return;
   s.holding = false;
   s.phase = "flying";
-  const speed = 26 + 62 * Math.pow(s.charge, 0.85);
+  const speed = launchSpeed(s.charge);
   const rad = (s.aimDeg * Math.PI) / 180;
   s.ball.x = 0;
   s.ball.y = 0.3;
@@ -143,8 +161,9 @@ export function step(s: GameState, dt: number, holding: boolean) {
 function stepCharging(s: GameState, dt: number) {
   s.charge = Math.min(1, s.charge + dt / CHARGE_TIME);
   s.aimPhase += dt;
-  // Aim sweeps 24°..66° — releasing at the right moment is part of the skill.
-  s.aimDeg = 24 + 42 * (0.5 + 0.5 * Math.sin(s.aimPhase * 2.2 - Math.PI / 2));
+  // Aim sweeps 22°..62° on a slow, readable rhythm — release in the green
+  // band (38°..52°) for the optimal angle.
+  s.aimDeg = 22 + 40 * (0.5 + 0.5 * Math.sin(s.aimPhase * 1.5 - Math.PI / 2));
   const wobble = 0.08 * Math.sin(s.t * 18) * s.charge;
   s.ball.x = 0;
   s.ball.y = -(0.4 + (MAX_DUNK_DEPTH - 0.4) * s.charge) + wobble;
@@ -169,9 +188,10 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   b.vy -= GRAVITY * dt;
   if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) b.vy -= DIVE_ACCEL * dt;
 
-  const drag = Math.exp(-AIR_DRAG * dt);
-  b.vx *= drag;
-  b.vy *= Math.exp(-0.015 * dt);
+  // Air thins out with altitude — space runs glide much farther.
+  const density = 0.25 + 0.75 * Math.exp(-Math.max(0, b.y) / 60);
+  b.vx *= Math.exp(-AIR_DRAG * density * dt);
+  b.vy *= Math.exp(-0.015 * density * dt);
 
   b.x += b.vx * dt;
   b.y += b.vy * dt;
@@ -235,26 +255,86 @@ function stepSettling(s: GameState, dt: number) {
 
 // ---------------- Pickups ----------------
 
-function spawnAhead(s: GameState) {
-  while (s.nextSpawnX < s.ball.x + 260) {
-    const roll = Math.random();
-    const x = s.nextSpawnX;
-    if (roll < 0.5) {
-      // Arc of coins.
-      const n = 4 + Math.floor(Math.random() * 3);
-      const baseY = 2 + Math.random() * 10;
-      for (let j = 0; j < n; j++) {
-        addPickup(s, "coin", x + j * 2.1, baseY + Math.sin((j / (n - 1)) * Math.PI) * 3);
+/** 5x5 coin-font for sky words. Only the glyphs we actually spell. */
+const COIN_FONT: Record<string, string[]> = {
+  L: ["X....", "X....", "X....", "X....", "XXXXX"],
+  M: ["X...X", "XX.XX", "X.X.X", "X...X", "X...X"],
+  A: [".XXX.", "X...X", "XXXXX", "X...X", "X...X"],
+  O: [".XXX.", "X...X", "X...X", "X...X", ".XXX."],
+  B: ["XXXX.", "X...X", "XXXX.", "X...X", "XXXX."],
+  $: [".XXXX", "X.X..", ".XXX.", "..X.X", "XXXX."],
+};
+
+const WORDS = ["LMAO", "$BBALL"];
+const WORD_CELL = 1.6; // meters per font cell
+
+function spawnWord(s: GameState, x: number, word: string, baseY: number) {
+  let cx = x;
+  for (const ch of word) {
+    const glyph = COIN_FONT[ch];
+    if (!glyph) continue;
+    for (let row = 0; row < glyph.length; row++) {
+      for (let col = 0; col < glyph[row].length; col++) {
+        if (glyph[row][col] === "X") {
+          // Row 0 is the top of the glyph.
+          addPickup(s, "coin", cx + col * WORD_CELL, baseY + (glyph.length - 1 - row) * WORD_CELL);
+        }
       }
-    } else if (roll < 0.75) {
-      addPickup(s, "ring", x, 3 + Math.random() * 12);
+    }
+    cx += 6 * WORD_CELL;
+  }
+  return cx - x; // word width
+}
+
+function spawnAhead(s: GameState) {
+  while (s.nextSpawnX < s.ball.x + 320) {
+    const x = s.nextSpawnX;
+
+    // Scheduled sky words — LMAO / $BBALL spelled in coins.
+    if (x >= s.nextWordX) {
+      const word = WORDS[s.wordIndex % WORDS.length];
+      const baseY = 10 + Math.random() * 16;
+      const width = spawnWord(s, x, word, baseY);
+      s.wordIndex += 1;
+      s.nextWordX = x + 300 + Math.random() * 250;
+      s.nextSpawnX += width + 18;
+      continue;
+    }
+
+    const roll = Math.random();
+    if (roll < 0.38) {
+      // Coin pattern: arc, line, or rising stair.
+      const kind = Math.floor(Math.random() * 3);
+      const n = 4 + Math.floor(Math.random() * 4);
+      const baseY = 2 + Math.random() * 12;
+      for (let j = 0; j < n; j++) {
+        const y =
+          kind === 0
+            ? baseY + Math.sin((j / (n - 1)) * Math.PI) * 3.5 // arc
+            : kind === 1
+            ? baseY // line
+            : baseY + j * 1.6; // stair
+        addPickup(s, "coin", x + j * 2.1, y);
+      }
+    } else if (roll < 0.56) {
+      // Orange boost ring — now spawns across a much taller band.
+      addPickup(s, "ring", x, 3 + Math.random() * 22);
+    } else if (roll < 0.68 && x > 120) {
+      // Golden jetstream ring, high in the sky.
+      addPickup(s, "jet", x, 26 + Math.random() * 40);
+    } else if (roll < 0.78 && x > 160) {
+      // Storm cloud — sky obstacle.
+      addPickup(s, "storm", x, 18 + Math.random() * 45);
+    } else if (roll < 0.85 && x > 320) {
+      // Satellite — space-tier mega boost.
+      addPickup(s, "sat", x, 85 + Math.random() * 70);
     } else if (x > 80) {
       // Red candle buoy bobbing on the surface.
       addPickup(s, "candle", x, 0);
     }
-    s.nextSpawnX += 16 + Math.random() * 24;
+    s.nextSpawnX += 15 + Math.random() * 22;
   }
-  if (s.pickups.length > 80) {
+  if (s.pickups.length > 220) {
     s.pickups = s.pickups.filter((p) => !p.taken && p.x > s.ball.x - 60);
   }
 }
@@ -263,6 +343,15 @@ function addPickup(s: GameState, type: PickupType, x: number, y: number) {
   s.pickups.push({ id: s.nextId++, type, x, y, taken: false });
 }
 
+const REACH: Record<PickupType, number> = {
+  coin: 1.5,
+  ring: 2.2,
+  jet: 2.6,
+  storm: 3.2,
+  sat: 2.6,
+  candle: 1.5,
+};
+
 function collectPickups(s: GameState) {
   const b = s.ball;
   for (const p of s.pickups) {
@@ -270,20 +359,40 @@ function collectPickups(s: GameState) {
     const py = p.type === "candle" ? waveHeight(p.x, s.t) + 0.7 : p.y;
     const dx = b.x - p.x;
     const dy = b.y - py;
-    const reach = p.type === "ring" ? 2.1 : p.type === "candle" ? 1.5 : 1.5;
+    const reach = REACH[p.type];
     if (dx * dx + dy * dy > reach * reach) continue;
     p.taken = true;
-    if (p.type === "coin") {
-      s.coins += 1;
-      b.vx += 1.8;
-      burst(s, p.x, py, 8, "spark");
-    } else if (p.type === "ring") {
-      b.vx += 9;
-      b.vy = Math.max(b.vy + 6, 10);
-      burst(s, p.x, py, 14, "spark");
-    } else {
-      b.vx *= 0.68;
-      burst(s, p.x, py, 12, "hit");
+    switch (p.type) {
+      case "coin":
+        s.coins += 1;
+        b.vx += 1.8;
+        burst(s, p.x, py, 8, "spark");
+        break;
+      case "ring":
+        b.vx += 9;
+        b.vy = Math.max(b.vy + 8, 13);
+        burst(s, p.x, py, 14, "spark");
+        break;
+      case "jet":
+        b.vx += 15;
+        b.vy = Math.max(b.vy + 10, 16);
+        burst(s, p.x, py, 18, "spark");
+        break;
+      case "sat":
+        s.coins += 5;
+        b.vx += 22;
+        b.vy += 6;
+        burst(s, p.x, py, 24, "spark");
+        break;
+      case "storm":
+        b.vx *= 0.62;
+        b.vy *= 0.65;
+        burst(s, p.x, py, 14, "hit");
+        break;
+      case "candle":
+        b.vx *= 0.68;
+        burst(s, p.x, py, 12, "hit");
+        break;
     }
   }
 }

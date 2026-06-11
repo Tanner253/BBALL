@@ -42,7 +42,7 @@ export default function GamePage() {
             <HowTo
               step="03"
               title="Collect"
-              body="$ coins nudge you forward, orange rings slingshot you onward. Red candle buoys kill momentum — dodge them."
+              body="Coins stack the 48h coin board. Orange rings boost, golden jetstreams launch you higher, satellites are space-tier. Dodge red candles and storm clouds."
             />
           </div>
 
@@ -58,17 +58,20 @@ export default function GamePage() {
             <span className="shimmer-text">$BBALL in your wallet.</span>
           </h2>
           <p className="mt-3 text-sm sm:text-base text-[var(--ink-soft)] max-w-2xl mx-auto">
-            Every 24 hours (00:00 UTC) the cycle resets and the podium gets paid:
+            Two competitions, two clocks. Distance resets daily (00:00 UTC); coins run on a
+            48h cycle with a single winner:
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Payout place="🥇 1st" amount="100,000" />
-            <Payout place="🥈 2nd" amount="50,000" />
-            <Payout place="🥉 3rd" amount="25,000" />
+            <Payout place="🥇 1st distance" amount="100,000" />
+            <Payout place="🥈 2nd distance" amount="50,000" />
+            <Payout place="🥉 3rd distance" amount="25,000" />
+            <Payout place="💰 coin champ (48h)" amount="50,000" />
           </div>
           <p className="mt-5 text-xs sm:text-sm text-[var(--ink-mute)] max-w-2xl mx-auto">
-            Rewards are sent manually by the dev to the Solana wallet you submit with your
-            score — no wallet connect, no signatures, ever. One best run per wallet counts
-            per cycle.
+            Distance counts your single best run per wallet; coins count your total collected
+            across every submitted run in the cycle. Rewards are sent manually by the dev to
+            the Solana wallet you submit with your score — no wallet connect, no signatures,
+            ever.
           </p>
         </section>
       </div>

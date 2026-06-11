@@ -28,6 +28,7 @@ export function LaunchGame() {
   const powerRef = useRef<HTMLDivElement>(null);
   const powerWrapRef = useRef<HTMLDivElement>(null);
   const flashRef = useRef<HTMLDivElement>(null);
+  const flashTextRef = useRef<HTMLSpanElement>(null);
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [result, setResult] = useState<RunResult | null>(null);
@@ -95,9 +96,9 @@ export function LaunchGame() {
       }
       if (flashRef.current) {
         flashRef.current.style.opacity = s.perfectFlash > 0 ? "1" : "0";
-        if (s.perfectFlash > 0) {
-          flashRef.current.textContent = `PERFECT SKIP ×${s.combo}`;
-        }
+      }
+      if (flashTextRef.current && s.perfectFlash > 0) {
+        flashTextRef.current.textContent = `PERFECT SKIP ×${s.combo}`;
       }
 
       raf = requestAnimationFrame(tick);
@@ -201,7 +202,10 @@ export function LaunchGame() {
         className="absolute inset-x-0 top-[22%] text-center pointer-events-none transition-opacity duration-300"
         style={{ opacity: 0 }}
       >
-        <span className="text-display text-2xl sm:text-4xl font-extrabold shimmer-text drop-shadow-[0_2px_8px_rgba(255,255,255,0.8)]">
+        <span
+          ref={flashTextRef}
+          className="text-display text-2xl sm:text-4xl font-extrabold shimmer-text drop-shadow-[0_2px_8px_rgba(255,255,255,0.8)]"
+        >
           PERFECT SKIP
         </span>
       </div>
@@ -209,35 +213,47 @@ export function LaunchGame() {
       {/* Power bar (visible while charging) */}
       <div
         ref={powerWrapRef}
-        className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none transition-opacity duration-200"
+        className="absolute inset-x-0 bottom-5 flex justify-center pointer-events-none transition-opacity duration-200"
         style={{ opacity: 0 }}
       >
-        <div className="glass rounded-full p-1 w-[min(420px,80%)]">
-          <div
-            ref={powerRef}
-            className="h-3 rounded-full transition-none"
-            style={{
-              width: "0%",
-              background:
-                "linear-gradient(90deg, var(--ball-green), var(--ball-yellow), var(--ball-orange), var(--ball-red))",
-            }}
-          />
+        <div className="glass rounded-2xl px-3 py-2 w-[min(440px,82%)]">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">
+              power
+            </span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ball-green)] font-bold">
+              release on green arrow
+            </span>
+          </div>
+          <div className="rounded-full bg-white/50 p-0.5">
+            <div
+              ref={powerRef}
+              className="h-3.5 rounded-full transition-none"
+              style={{
+                width: "0%",
+                background:
+                  "linear-gradient(90deg, var(--ball-green), var(--ball-yellow), var(--ball-orange), var(--ball-red))",
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Ready overlay */}
+      {/* Ready overlay — anchored right so it never covers the ball. */}
       {phase === "ready" && (
-        <div className="absolute inset-x-0 bottom-[18%] flex justify-center pointer-events-none px-4">
-          <div className="glass-strong rounded-2xl px-5 py-3.5 text-center max-w-sm launch-hint">
-            <p className="font-semibold text-[var(--ink)]">
-              Hold to dunk · release to launch
+        <div className="absolute right-3 sm:right-5 top-[16%] sm:top-[22%] max-w-[240px] sm:max-w-[280px] pointer-events-none">
+          <div className="glass-strong rounded-2xl px-4 py-3.5 launch-hint">
+            <p className="font-semibold text-sm text-[var(--ink)]">
+              <span aria-hidden>👈</span> Hold the ball under · release to launch
             </p>
-            <p className="mt-1 text-xs text-[var(--ink-soft)] leading-relaxed">
-              Time the sweeping arrow. Mid-air, <span className="font-semibold">hold</span> to
-              dive — land shallow for a <span className="font-semibold">perfect skip</span>.
-              Grab <span className="font-semibold text-[#9a6a00]">$ coins</span> and{" "}
-              <span className="font-semibold text-[var(--ball-orange)]">boost rings</span>, dodge
-              the <span className="font-semibold text-[var(--ball-red)]">red candles</span>.
+            <p className="mt-1.5 text-xs text-[var(--ink-soft)] leading-relaxed">
+              Release when the arrow is <span className="font-semibold text-[var(--ball-green)]">green</span>.
+              Mid-air, <span className="font-semibold">hold</span> to dive — land shallow to{" "}
+              <span className="font-semibold">skip</span>. Chain{" "}
+              <span className="font-semibold text-[var(--ball-orange)]">rings</span> and{" "}
+              <span className="font-semibold text-[#9a6a00]">jetstreams</span> into space; dodge{" "}
+              <span className="font-semibold text-[var(--ball-red)]">candles</span> and{" "}
+              <span className="font-semibold text-[#5a6474]">storms</span>.
             </p>
           </div>
         </div>

@@ -17,9 +17,12 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import {
   PAYOUTS,
+  COINS_PAYOUT,
   getDb,
   currentCycleId,
   cycleEndsAt,
+  currentCoinCycleId,
+  coinCycleEndsAt,
   validateScore,
   minPlausibleSeconds,
 } from "./lib.js";
@@ -99,6 +102,7 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
       skips: value.skips,
       bestCombo: value.bestCombo,
       cycleId,
+      coinCycleId: currentCoinCycleId(),
       createdAt: new Date(),
     });
 
@@ -116,63 +120,106 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
   }
 });
 
-/** Current cycle leaderboard — best run per wallet, top 25. */
+/** Both boards: distance (daily, best run per wallet) and coins (48h, total
+ *  collected per wallet). */
 app.get("/api/leaderboard", readLimiter, async (_req, res, next) => {
   try {
     const db = await getDb();
+    const scores = db.collection("scores");
     const cycleId = currentCycleId();
-    const top = await db
-      .collection("scores")
-      .aggregate([
-        { $match: { cycleId } },
-        { $sort: { distance: -1, createdAt: 1 } },
-        { $group: { _id: "$wallet", doc: { $first: "$$ROOT" } } },
-        { $replaceRoot: { newRoot: "$doc" } },
-        { $sort: { distance: -1, createdAt: 1 } },
-        { $limit: 25 },
-        {
-          $project: {
-            _id: 0,
-            name: 1,
-            wallet: 1,
-            distance: 1,
-            coins: 1,
-            skips: 1,
-            bestCombo: 1,
+    const coinCycleId = currentCoinCycleId();
+
+    const [distanceTop, coinsTop] = await Promise.all([
+      scores
+        .aggregate([
+          { $match: { cycleId } },
+          { $sort: { distance: -1, createdAt: 1 } },
+          { $group: { _id: "$wallet", doc: { $first: "$$ROOT" } } },
+          { $replaceRoot: { newRoot: "$doc" } },
+          { $sort: { distance: -1, createdAt: 1 } },
+          { $limit: 25 },
+          { $project: { _id: 0, name: 1, wallet: 1, distance: 1, coins: 1, skips: 1, bestCombo: 1 } },
+        ])
+        .toArray(),
+      scores
+        .aggregate([
+          { $match: { coinCycleId } },
+          { $sort: { createdAt: -1 } },
+          {
+            $group: {
+              _id: "$wallet",
+              name: { $first: "$name" },
+              coins: { $sum: "$coins" },
+              runs: { $sum: 1 },
+              bestDistance: { $max: "$distance" },
+            },
           },
-        },
-      ])
-      .toArray();
-    res.json({ cycleId, endsAt: cycleEndsAt(), payouts: PAYOUTS, top });
+          { $sort: { coins: -1, bestDistance: -1 } },
+          { $limit: 25 },
+          { $project: { _id: 0, wallet: "$_id", name: 1, coins: 1, runs: 1, bestDistance: 1 } },
+        ])
+        .toArray(),
+    ]);
+
+    res.json({
+      distance: { cycleId, endsAt: cycleEndsAt(), payouts: PAYOUTS, top: distanceTop },
+      coins: { cycleId: coinCycleId, endsAt: coinCycleEndsAt(), payout: COINS_PAYOUT, top: coinsTop },
+    });
   } catch (e) {
     next(e);
   }
 });
 
-/** Past cycles' podiums — the dev pays these out manually. */
+/** Past winners for both competitions — the dev pays these out manually. */
 app.get("/api/winners", readLimiter, async (_req, res, next) => {
   try {
     const db = await getDb();
-    const cycles = await db
-      .collection("scores")
-      .aggregate([
-        { $match: { cycleId: { $ne: currentCycleId() } } },
-        { $sort: { distance: -1, createdAt: 1 } },
-        { $group: { _id: { c: "$cycleId", w: "$wallet" }, doc: { $first: "$$ROOT" } } },
-        { $replaceRoot: { newRoot: "$doc" } },
-        { $sort: { distance: -1, createdAt: 1 } },
-        {
-          $group: {
-            _id: "$cycleId",
-            top: { $push: { name: "$name", wallet: "$wallet", distance: "$distance" } },
+    const scores = db.collection("scores");
+
+    const [distance, coins] = await Promise.all([
+      scores
+        .aggregate([
+          { $match: { cycleId: { $ne: currentCycleId() } } },
+          { $sort: { distance: -1, createdAt: 1 } },
+          { $group: { _id: { c: "$cycleId", w: "$wallet" }, doc: { $first: "$$ROOT" } } },
+          { $replaceRoot: { newRoot: "$doc" } },
+          { $sort: { distance: -1, createdAt: 1 } },
+          {
+            $group: {
+              _id: "$cycleId",
+              top: { $push: { name: "$name", wallet: "$wallet", distance: "$distance" } },
+            },
           },
-        },
-        { $project: { _id: 0, cycleId: "$_id", top: { $slice: ["$top", 3] } } },
-        { $sort: { cycleId: -1 } },
-        { $limit: 7 },
-      ])
-      .toArray();
-    res.json({ payouts: PAYOUTS, cycles });
+          { $project: { _id: 0, cycleId: "$_id", top: { $slice: ["$top", 3] } } },
+          { $sort: { cycleId: -1 } },
+          { $limit: 7 },
+        ])
+        .toArray(),
+      scores
+        .aggregate([
+          { $match: { coinCycleId: { $exists: true, $ne: currentCoinCycleId() } } },
+          {
+            $group: {
+              _id: { c: "$coinCycleId", w: "$wallet" },
+              name: { $first: "$name" },
+              coins: { $sum: "$coins" },
+            },
+          },
+          { $sort: { coins: -1 } },
+          {
+            $group: {
+              _id: "$_id.c",
+              winner: { $first: { name: "$name", wallet: "$_id.w", coins: "$coins" } },
+            },
+          },
+          { $project: { _id: 0, cycleId: "$_id", winner: 1 } },
+          { $sort: { cycleId: -1 } },
+          { $limit: 7 },
+        ])
+        .toArray(),
+    ]);
+
+    res.json({ payouts: PAYOUTS, coinsPayout: COINS_PAYOUT, distance, coins });
   } catch (e) {
     next(e);
   }
