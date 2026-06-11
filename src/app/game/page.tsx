@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LaunchGame } from "@/components/game/LaunchGame";
 import { GlobalLeaderboard } from "@/components/game/GlobalLeaderboard";
-import { UpgradeShop } from "@/components/game/UpgradeShop";
+import { ChallengeBanner } from "@/components/game/ChallengeBanner";
 
 export const metadata: Metadata = {
   title: "Beachball Launch — $BBALL",
@@ -22,15 +22,14 @@ export default function GamePage() {
           </h1>
           <p className="mt-3 text-[var(--ink-soft)] max-w-xl">
             Hold the ball underwater. The deeper the dunk, the harder it flies — you know
-            how this works. Skip it across the ocean and post your distance.
+            how this works. Skip it across the ocean and post your distance. Waves and wind
+            reshuffle daily at 00:00 UTC — identical for every player, every launch.
           </p>
         </header>
 
         <LaunchGame />
 
-        <div className="mt-6">
-          <UpgradeShop />
-        </div>
+        <ChallengeBanner />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px] items-start">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -42,12 +41,12 @@ export default function GamePage() {
             <HowTo
               step="02"
               title="Skip"
-              body="Mid-air, hold to dive. Hit the water shallow for a PERFECT skip that keeps your speed and chains combos."
+              body="Mid-air, hold the screen (or spacebar) to dive the ball down. Time it into a wave dip for a PERFECT bounce that launches you HIGHER — chain them for combos. Whales are trampolines."
             />
             <HowTo
               step="03"
               title="Collect"
-              body="Coins stack the 48h coin board. Rings, jetstreams, balloons, dolphins and geysers boost you; satellites are space-tier. Dodge candles, seagulls, storm clouds and UFOs."
+              body="Coins stack the 48h coin board. Rings, jetstreams, balloons, dolphins, geysers and green candles boost you; white god candles and whales send you vertical. Dodge red candles, seagulls, storm clouds and UFOs."
             />
           </div>
 

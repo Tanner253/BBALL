@@ -11,8 +11,18 @@ import {
   type GameState,
   type Mods,
 } from "./engine";
-import { createCamera, drawFrame, updateCamera } from "./render";
+import { CanvasUpgrades } from "./CanvasUpgrades";
+import {
+  connectLive,
+  disconnectLive,
+  liveWatching,
+  sendLiveEnd,
+  sendLivePos,
+  updateGhosts,
+} from "./live";
+import { createCamera, drawFrame, drawGhosts, updateCamera } from "./render";
 import { SubmitPanel, type RunResult } from "./SubmitPanel";
+import { GAME_WEATHER } from "./weather";
 import {
   ensureAudio,
   getMutedServerSnapshot,
@@ -28,7 +38,7 @@ import {
   setMusicOn,
   subscribeMusic,
 } from "./music";
-import { fetchUpgrades, startRun, UPGRADES_EVENT } from "@/lib/api";
+import { fetchUpgrades, SCORES_EVENT, startRun, UPGRADES_EVENT } from "@/lib/api";
 import { loadPlayer } from "@/lib/player";
 import { isValidSolWallet } from "@/lib/api";
 import { modsFrom } from "@/lib/upgrades";
@@ -43,6 +53,9 @@ export function LaunchGame() {
   const runTokenRef = useRef<string | null>(null);
   // Daily-upgrade modifiers for the saved wallet (neutral until loaded).
   const modsRef = useRef<Mods>(DEFAULT_MODS);
+  // Display name streamed with live positions (refreshed after submits).
+  const nameRef = useRef("");
+  const liveCountRef = useRef<HTMLSpanElement>(null);
 
   // Fast-changing HUD numbers are written straight to the DOM (no re-render).
   const distRef = useRef<HTMLSpanElement>(null);
@@ -94,6 +107,7 @@ export function LaunchGame() {
         lastPhase = s.phase;
         setPhase(s.phase);
         if (s.phase === "over") {
+          sendLiveEnd();
           setResult({
             distance: Math.round(s.distance),
             coins: s.coins,
@@ -118,6 +132,19 @@ export function LaunchGame() {
       updateCamera(camRef.current, s, w, h, dt);
       drawFrame(ctx, s, camRef.current, w, h);
 
+      // Live layer: stream our run, draw everyone else's (interpolated).
+      const ghosts = updateGhosts(dt);
+      drawGhosts(ctx, ghosts, s, camRef.current, w);
+      if (s.phase === "flying") {
+        sendLivePos(nameRef.current || "anon", s.ball.x, s.ball.y);
+      }
+      if (liveCountRef.current) {
+        liveCountRef.current.textContent =
+          ghosts.length > 0
+            ? `🟢 ${ghosts.length} launching now · ${liveWatching()} online`
+            : "";
+      }
+
       // HUD writes.
       if (distRef.current) {
         distRef.current.textContent = `${Math.round(s.distance)}m`;
@@ -136,7 +163,8 @@ export function LaunchGame() {
         flashRef.current.style.opacity = s.perfectFlash > 0 ? "1" : "0";
       }
       if (flashTextRef.current && s.perfectFlash > 0) {
-        flashTextRef.current.textContent = `PERFECT SKIP ×${s.combo}`;
+        flashTextRef.current.textContent =
+          s.combo > 1 ? `${s.flashText} ×${s.combo}` : s.flashText;
       }
 
       raf = requestAnimationFrame(tick);
@@ -168,6 +196,20 @@ export function LaunchGame() {
     holdingRef.current = false;
   }, []);
 
+  // Live ghost layer: connect for the lifetime of the game component.
+  useEffect(() => {
+    connectLive();
+    const syncName = () => {
+      nameRef.current = loadPlayer().name;
+    };
+    syncName();
+    window.addEventListener(SCORES_EVENT, syncName);
+    return () => {
+      window.removeEventListener(SCORES_EVENT, syncName);
+      disconnectLive();
+    };
+  }, []);
+
   // Load upgrade mods for the saved wallet; refresh after shop purchases
   // and score submits (a submit may be the wallet's first registration).
   useEffect(() => {
@@ -188,9 +230,10 @@ export function LaunchGame() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" && !e.repeat) {
+      if (e.code === "Space") {
+        // Always block page scroll — including key-repeat events.
         e.preventDefault();
-        press();
+        if (!e.repeat) press();
       }
     };
     const up = (e: KeyboardEvent) => {
@@ -254,8 +297,18 @@ export function LaunchGame() {
           >
             $0 · 0 skips · 0 km/h
           </span>
+          <span className="block font-mono text-[9px] sm:text-[10px] text-[var(--ink-mute)]">
+            🌊 today: {GAME_WEATHER.label}
+          </span>
+          <span
+            ref={liveCountRef}
+            className="block font-mono text-[9px] sm:text-[10px] font-bold text-[#2c9c5e]"
+          />
         </div>
       </div>
+
+      {/* Pre-launch upgrade panel (desktop) */}
+      {phase === "ready" && <CanvasUpgrades />}
 
       {/* Audio toggles (top-right) */}
       <div className="absolute right-3 top-3 sm:right-4 sm:top-4 flex gap-2">
@@ -334,14 +387,19 @@ export function LaunchGame() {
             </p>
             <p className="mt-1.5 text-xs text-[var(--ink-soft)] leading-relaxed">
               Power and angle <span className="font-semibold">swing on their own</span> — release
-              at the right moment. Mid-air, <span className="font-semibold">hold</span> to dive —
-              land shallow to <span className="font-semibold">skip</span>. Chain{" "}
+              at the right moment. Mid-air,{" "}
+              <span className="font-semibold">hold (screen or spacebar)</span> to dive the ball
+              down — slam a <span className="font-semibold text-[var(--ball-blue,#2a7fc9)]">wave dip</span>{" "}
+              for a PERFECT bounce that flies even higher. Bounce off{" "}
+              <span className="font-semibold text-[#3d6b8f]">whales</span> for huge air. Chain{" "}
               <span className="font-semibold text-[var(--ball-orange)]">rings</span>,{" "}
               <span className="font-semibold text-[#9a6a00]">jetstreams</span>,{" "}
               <span className="font-semibold text-[#4a7da3]">dolphins</span>,{" "}
-              <span className="font-semibold text-[#1899a8]">geysers</span> &{" "}
-              <span className="font-semibold text-[var(--ball-red)]">balloons</span> into space;
-              dodge <span className="font-semibold text-[var(--ball-red)]">candles</span>,{" "}
+              <span className="font-semibold text-[#1899a8]">geysers</span>,{" "}
+              <span className="font-semibold text-[var(--ball-red)]">balloons</span> &{" "}
+              <span className="font-semibold text-[#1f9d50]">green candles</span> into space —{" "}
+              <span className="font-semibold text-[#6b7890]">white god candles</span> moonshot;
+              dodge <span className="font-semibold text-[var(--ball-red)]">red candles</span>,{" "}
               <span className="font-semibold text-[#8a93a3]">seagulls</span>,{" "}
               <span className="font-semibold text-[#5a6474]">storms</span> and{" "}
               <span className="font-semibold text-[#39a86b]">UFOs</span>.

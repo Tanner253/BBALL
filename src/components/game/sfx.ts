@@ -107,6 +107,11 @@ function noise(dur: number, vol: number, filterFreq: number, delay = 0) {
   src.start(t0);
 }
 
+// Coin chirps are throttled (word layouts can hit dozens of coins in one
+// frame — unthrottled that stutters the game loop) and pitch up with streaks.
+let lastCoinAt = 0;
+let coinStreak = 0;
+
 export function playSfx(event: GameEvent) {
   if (!ctx || getMutedSnapshot()) return;
   switch (event) {
@@ -114,10 +119,16 @@ export function playSfx(event: GameEvent) {
       tone(140, 0.45, "sawtooth", 0.16, 760);
       noise(0.35, 0.18, 1400);
       break;
-    case "coin":
-      tone(990, 0.07, "square", 0.08);
-      tone(1480, 0.09, "square", 0.08, undefined, 0.055);
+    case "coin": {
+      const now = performance.now();
+      if (now - lastCoinAt < 70) return;
+      coinStreak = now - lastCoinAt < 600 ? Math.min(coinStreak + 1, 12) : 0;
+      lastCoinAt = now;
+      const mul = Math.pow(2, coinStreak / 12); // climbs up to an octave
+      tone(990 * mul, 0.07, "square", 0.08);
+      tone(1480 * mul, 0.09, "square", 0.08, undefined, 0.055);
       break;
+    }
     case "ring":
       tone(320, 0.22, "sawtooth", 0.12, 980);
       break;
@@ -154,6 +165,12 @@ export function playSfx(event: GameEvent) {
       noise(0.35, 0.2, 1200);
       tone(180, 0.3, "sine", 0.1, 420);
       break;
+    case "whale":
+      // Deep whale song + mighty splash.
+      tone(110, 0.5, "sine", 0.2, 320);
+      tone(160, 0.45, "sine", 0.12, 90, 0.18);
+      noise(0.5, 0.22, 900, 0.05);
+      break;
     case "storm":
       // Thunder rumble.
       noise(0.5, 0.26, 320);
@@ -162,6 +179,18 @@ export function playSfx(event: GameEvent) {
     case "candle":
       // Sad descending womp.
       tone(420, 0.32, "square", 0.12, 130);
+      break;
+    case "pump":
+      // Number-go-up riser.
+      tone(330, 0.22, "sawtooth", 0.13, 990);
+      tone(660, 0.14, "triangle", 0.1, 1320, 0.12);
+      break;
+    case "wick":
+      // God candle — ascending choir of profit.
+      tone(523, 0.14, "triangle", 0.15, 1046);
+      tone(784, 0.18, "triangle", 0.14, 1568, 0.1);
+      tone(1046, 0.3, "triangle", 0.14, 2093, 0.2);
+      noise(0.25, 0.1, 3600);
       break;
     case "perfect":
       tone(1180, 0.1, "triangle", 0.14);
@@ -177,6 +206,18 @@ export function playSfx(event: GameEvent) {
       break;
     case "splash":
       noise(0.4, 0.18, 1100);
+      break;
+    case "milestone":
+      // Triumphant little fanfare.
+      tone(523, 0.12, "triangle", 0.16);
+      tone(659, 0.12, "triangle", 0.16, undefined, 0.1);
+      tone(784, 0.2, "triangle", 0.18, undefined, 0.2);
+      tone(1046, 0.3, "triangle", 0.16, undefined, 0.3);
+      break;
+    case "nearmiss":
+      // Doppler whoosh.
+      noise(0.22, 0.16, 2600);
+      tone(900, 0.18, "sine", 0.08, 320);
       break;
   }
 }

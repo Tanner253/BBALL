@@ -36,9 +36,38 @@ export const UPGRADES = {
   power: { name: "Super Boosts", costs: [10, 30, 70] },
   radar: { name: "Boost Radar", costs: [8, 20, 45] },
   magnet: { name: "Coin Rain", costs: [8, 20, 45] },
+  bounce: { name: "Bouncy Ball", costs: [10, 25, 60] },
 };
 
 export const MAX_UPGRADE_LEVEL = 3;
+
+/**
+ * Daily challenge — deterministic from the cycle date so client and server
+ * always agree (client mirror: src/lib/challenge.ts; keep in sync).
+ * Qualifying runs earn bonus coins on top of what they collected.
+ */
+export const CHALLENGE_BONUS = 25;
+
+export const CHALLENGES = [
+  { id: "coins30", text: "Collect 30+ coins in one run", stat: "coins", min: 30 },
+  { id: "skips15", text: "Land 15+ skips in one run", stat: "skips", min: 15 },
+  { id: "combo5", text: "Chain a 5+ perfect-skip combo", stat: "bestCombo", min: 5 },
+  { id: "dist800", text: "Fly 800m+ in one run", stat: "distance", min: 800 },
+];
+
+/** FNV-1a — must match src/components/game/weather.ts hashDay. */
+export function hashDay(day) {
+  let h = 2166136261;
+  for (let i = 0; i < day.length; i++) {
+    h ^= day.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export function challengeFor(cycleId) {
+  return CHALLENGES[hashDay(`${cycleId}:challenge`) % CHALLENGES.length];
+}
 
 const SOL_WALLET_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 

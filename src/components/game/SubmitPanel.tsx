@@ -16,7 +16,7 @@ export type RunResult = {
 type Status =
   | { kind: "form"; error?: string }
   | { kind: "submitting" }
-  | { kind: "done"; rank: number };
+  | { kind: "done"; rank: number; challengeBonus: number };
 
 export function SubmitPanel({
   result,
@@ -57,7 +57,7 @@ export function SubmitPanel({
       ...statsOf(result),
     });
     if (res.ok) {
-      setStatus({ kind: "done", rank: res.rank });
+      setStatus({ kind: "done", rank: res.rank, challengeBonus: res.challengeBonus });
     } else {
       setStatus({ kind: "form", error: res.error });
     }
@@ -115,6 +115,11 @@ export function SubmitPanel({
                 ? `#${status.rank} globally right now — that's payout territory! 🏆`
                 : `#${status.rank} on today's global leaderboard.`}
             </p>
+            {status.challengeBonus > 0 && (
+              <p className="mt-1 text-xs font-bold text-[#2c9c5e]">
+                🎯 Daily challenge complete — +{status.challengeBonus} bonus coins banked!
+              </p>
+            )}
             <p className="mt-1 text-xs text-[var(--ink-soft)]">
               Hold a top-3 spot when the cycle ends and $BBALL lands in your wallet.
             </p>

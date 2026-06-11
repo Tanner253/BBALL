@@ -7,7 +7,7 @@
 
 import type { Mods } from "@/components/game/engine";
 
-export type UpgradeId = "dunk" | "jetpack" | "power" | "radar" | "magnet";
+export type UpgradeId = "dunk" | "jetpack" | "power" | "radar" | "magnet" | "bounce";
 
 export type UpgradeLevels = Record<UpgradeId, number>;
 
@@ -55,6 +55,13 @@ export const UPGRADE_LIST: {
     desc: "More coins spawn and you grab them from further away.",
     costs: [8, 20, 45],
   },
+  {
+    id: "bounce",
+    name: "Bouncy Ball",
+    emoji: "🦘",
+    desc: "Regular skips and crash-downs keep way more speed.",
+    costs: [10, 25, 60],
+  },
 ];
 
 export const ZERO_LEVELS: UpgradeLevels = {
@@ -63,6 +70,7 @@ export const ZERO_LEVELS: UpgradeLevels = {
   power: 0,
   radar: 0,
   magnet: 0,
+  bounce: 0,
 };
 
 /** Convert owned levels into the engine modifiers used by the sim. */
@@ -74,5 +82,6 @@ export function modsFrom(levels: UpgradeLevels): Mods {
     boostRateMul: 1 + 0.35 * levels.radar,
     coinRateMul: 1 + 0.35 * levels.magnet,
     coinReach: 1.5 + 0.5 * levels.magnet,
+    skipBounce: 0.08 * levels.bounce,
   };
 }

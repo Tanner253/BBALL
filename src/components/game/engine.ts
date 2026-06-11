@@ -20,7 +20,10 @@ export type PickupType =
   | "ufo" // UFO (space) — tractor beam steals speed and coins
   | "dolphin" // leaping dolphin near the surface — forward boost
   | "geyser" // water spout on the surface — vertical relaunch
-  | "candle"; // red candle buoy on the water — classic momentum killer
+  | "whale" // breaching whale — bounces the ball SUPER high
+  | "candle" // red candle buoy on the water — classic momentum killer
+  | "pump" // green candle buoy — number go up, straight vertical boost
+  | "wick"; // white god candle — rare, massive vertical spike
 
 export type Pickup = {
   id: number;
@@ -64,12 +67,20 @@ export type GameState = {
   maxSpeed: number;
   /** Set true for one step after a perfect skip (HUD flash). */
   perfectFlash: number;
+  /** Text shown by the HUD flash while perfectFlash > 0. */
+  flashText: string;
   /** One-shot events (sounds etc.), drained each frame by the game loop. */
   events: GameEvent[];
   /** Daily-upgrade modifiers active for this run. */
   mods: Mods;
   /** Remaining jetpack afterburner seconds. */
   jetpackLeft: number;
+  /** Next distance milestone index (MILESTONES). */
+  milestoneIdx: number;
+  /** Remaining screen-shake seconds (renderer reads this). */
+  shake: number;
+  /** Pickup ids already credited with a near-miss (avoid double counting). */
+  nearMissed: Set<number>;
   pickups: Pickup[];
   particles: Particle[];
   nextSpawnX: number;
@@ -96,6 +107,8 @@ export type Mods = {
   coinRateMul: number;
   /** Coin grab radius in meters (Coin Rain). */
   coinReach: number;
+  /** Extra restitution added to water bounces (Bouncy Ball). */
+  skipBounce: number;
 };
 
 export const DEFAULT_MODS: Mods = {
@@ -105,6 +118,7 @@ export const DEFAULT_MODS: Mods = {
   boostRateMul: 1,
   coinRateMul: 1,
   coinReach: 1.5,
+  skipBounce: 0,
 };
 
 /** Launch speed (m/s) for a given charge — shared with the aim preview. */
@@ -124,12 +138,40 @@ export type GameEvent =
   | "ufo"
   | "storm"
   | "candle"
+  | "pump"
+  | "wick"
   | "dolphin"
   | "geyser"
+  | "whale"
   | "skip"
   | "perfect"
   | "bounce"
-  | "splash";
+  | "splash"
+  | "milestone"
+  | "nearmiss";
+/** Hype words for the perfect-skip flash — pure serotonin. */
+const PERFECT_WORDS = [
+  "PERFECT SKIP",
+  "BUTTER!",
+  "CLEAN!",
+  "DIALED IN!",
+  "SENDING IT!",
+  "WAVE RIDER!",
+];
+
+/** Distance milestones with announcer lines. Space line matches SPACE_Y feel. */
+export const MILESTONES: { at: number; text: string }[] = [
+  { at: 250, text: "250m — WARMING UP" },
+  { at: 500, text: "500m — CRUISING!" },
+  { at: 1000, text: "1 KILOMETER!!" },
+  { at: 2000, text: "2KM — ABSOLUTELY SENDING" },
+  { at: 3500, text: "3.5KM — BEACHBALL HISTORY" },
+  { at: 5000, text: "5KM — TOUCH GRASS (LATER)" },
+];
+
+/** Altitude (m) where "orbit" is announced once per run. */
+const SPACE_ALT = 100;
+
 const DIVE_ACCEL = 52;
 const AIR_DRAG = 0.038;
 const MAX_DUNK_DEPTH = 3.0; // visual depth while charging (m)
@@ -156,9 +198,13 @@ export function createInitialState(mods: Mods = DEFAULT_MODS): GameState {
     maxAlt: 0,
     maxSpeed: 0,
     perfectFlash: 0,
+    flashText: "",
     events: [],
     mods,
     jetpackLeft: 0,
+    milestoneIdx: 0,
+    shake: 0,
+    nearMissed: new Set(),
     pickups: [],
     particles: [],
     nextSpawnX: 25,
@@ -168,9 +214,20 @@ export function createInitialState(mods: Mods = DEFAULT_MODS): GameState {
   };
 }
 
-/** Organic water line — two layered sine waves. */
+/** Organic water line — two layered sine waves shaped by today's weather.
+ *  Same for every player worldwide (deterministic from the UTC date). */
 export function waveHeight(x: number, t: number): number {
-  return 0.32 * Math.sin(0.5 * x + 1.25 * t) + 0.18 * Math.sin(1.35 * x - 0.7 * t);
+  const { waveAmp, waveFreq } = GAME_WEATHER;
+  return (
+    waveAmp *
+    (0.64 * Math.sin(0.5 * waveFreq * x + 1.25 * t) +
+      0.36 * Math.sin(1.35 * waveFreq * x - 0.7 * t))
+  );
+}
+
+/** True when the surface at x sits in a wave dip (trough) right now. */
+export function inWaveDip(x: number, t: number): boolean {
+  return waveHeight(x, t) < -GAME_WEATHER.waveAmp * 0.18;
 }
 
 export function startCharge(s: GameState) {
@@ -207,6 +264,7 @@ export function step(s: GameState, dt: number, holding: boolean) {
   s.t += dt;
   s.holding = holding;
   s.perfectFlash = Math.max(0, s.perfectFlash - dt);
+  s.shake = Math.max(0, s.shake - dt);
 
   switch (s.phase) {
     case "ready":
@@ -264,6 +322,9 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   b.vy -= GRAVITY * dt;
   if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) b.vy -= DIVE_ACCEL * dt;
 
+  // Today's global wind — same push (or fight) for every player.
+  b.vx += GAME_WEATHER.wind * dt;
+
   // Jetpack afterburner (daily upgrade): thrust right after launch.
   if (s.jetpackLeft > 0) {
     s.jetpackLeft -= dt;
@@ -295,8 +356,27 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   s.maxAlt = Math.max(s.maxAlt, b.y);
   s.maxSpeed = Math.max(s.maxSpeed, Math.hypot(b.vx, b.vy));
 
+  // Distance milestones — announcer flash + screen shake.
+  const next = MILESTONES[s.milestoneIdx];
+  if (next && s.distance >= next.at) {
+    s.milestoneIdx += 1;
+    s.perfectFlash = 1.4;
+    s.flashText = next.text;
+    s.shake = 0.5;
+    emit(s, "milestone");
+  }
+  // One-time orbit announcement on a true space run.
+  if (b.y >= SPACE_ALT && !s.nearMissed.has(-1)) {
+    s.nearMissed.add(-1); // sentinel: orbit announced
+    s.perfectFlash = 1.6;
+    s.flashText = "🛰 ORBIT ACHIEVED";
+    s.shake = 0.6;
+    emit(s, "milestone");
+  }
+
   spawnAhead(s);
   collectPickups(s);
+  checkNearMisses(s);
 
   const surface = waveHeight(b.x, s.t);
   if (b.y <= surface && b.vy < 0) {
@@ -310,29 +390,34 @@ function handleWaterContact(s: GameState, surface: number) {
   const impactDeg = (Math.atan2(-b.vy, Math.max(0.001, b.vx)) * 180) / Math.PI;
 
   if (speed > MIN_SKIP_SPEED && impactDeg < 52) {
-    // Skip. Shallow + intentional dive = "perfect" — keeps far more energy.
-    const perfect = s.holding && impactDeg >= 8 && impactDeg <= 34;
-    const e = perfect ? 0.82 : 0.5 + 0.18 * (1 - impactDeg / 52);
+    // Skip. Perfect = intentional dive INTO a wave dip — the trough acts as
+    // a ramp and fires the ball back up HIGHER than it came in.
+    const perfect = s.holding && impactDeg >= 8 && impactDeg <= 40 && inWaveDip(b.x, s.t);
+    // Bouncy Ball upgrade pushes regular skips toward perfect-tier energy.
+    const e = perfect
+      ? 1.12 + s.mods.skipBounce * 0.5
+      : 0.62 + 0.2 * (1 - impactDeg / 52) + s.mods.skipBounce;
     b.y = surface + 0.02;
-    b.vy = -b.vy * e;
-    b.vx *= perfect ? 1.06 : 0.93;
+    b.vy = Math.min(-b.vy * e, 34); // cap so chained perfects don't go ballistic
+    b.vx *= (perfect ? 1.07 : 0.95) + s.mods.skipBounce * 0.25;
     s.skips += 1;
     if (perfect) {
       s.combo += 1;
       s.bestCombo = Math.max(s.bestCombo, s.combo);
       s.perfectFlash = 0.8;
+      s.flashText = PERFECT_WORDS[Math.floor(Math.random() * PERFECT_WORDS.length)];
       emit(s, "perfect");
     } else {
       s.combo = 0;
       emit(s, "skip");
     }
-    burst(s, b.x, surface, perfect ? 16 : 10, "splash");
+    burst(s, b.x, surface, perfect ? 18 : 10, "splash");
   } else if (speed > MIN_SKIP_SPEED) {
     // Steep impact: it's a beachball — buoyancy pops it back up instead of
     // swallowing the bounce. Energy bleeds fast, but it never dies flat.
     b.y = surface + 0.02;
-    b.vy = Math.abs(b.vy) * 0.48;
-    b.vx *= 0.84;
+    b.vy = Math.abs(b.vy) * (0.55 + s.mods.skipBounce * 0.9);
+    b.vx *= 0.86 + s.mods.skipBounce * 0.3;
     s.combo = 0;
     emit(s, "bounce");
     burst(s, b.x, surface, 16, "splash");
@@ -446,11 +531,20 @@ function spawnAhead(s: GameState) {
 
     // --- Surface lane (water level) ---
     const sr = Math.random();
-    if (x > 80 && sr < 0.14) {
+    if (x > 150 && sr < 0.045) {
+      // Rare breaching whale — the jackpot bounce.
+      addPickup(s, "whale", x + 6, 0);
+    } else if (x > 200 && sr < 0.075) {
+      // Rare white god candle — massive vertical spike.
+      addPickup(s, "wick", x, 0);
+    } else if (x > 80 && sr < 0.18) {
       addPickup(s, "candle", x, 0);
-    } else if (x > 100 && sr < 0.26) {
+    } else if (x > 70 && sr < 0.28) {
+      // Green candle — number go up.
+      addPickup(s, "pump", x, 0);
+    } else if (x > 100 && sr < 0.4) {
       addPickup(s, "geyser", x + 4, 0);
-    } else if (x > 60 && sr < 0.4) {
+    } else if (x > 60 && sr < 0.54) {
       addPickup(s, "dolphin", x + 2, 1.5 + Math.random() * 3);
     }
 
@@ -520,8 +614,14 @@ const REACH: Record<PickupType, number> = {
   ufo: 3.4,
   dolphin: 2.0,
   geyser: 2.4,
+  whale: 4.2,
   candle: 1.5,
+  pump: 1.7,
+  wick: 2.0,
 };
+
+/** Surface buoys ride the waves rather than holding a fixed altitude. */
+const BUOYS = new Set<PickupType>(["candle", "pump", "wick"]);
 
 function collectPickups(s: GameState) {
   const b = s.ball;
@@ -529,7 +629,7 @@ function collectPickups(s: GameState) {
   const bm = s.mods.boostMul;
   for (const p of s.pickups) {
     if (p.taken) continue;
-    const py = p.type === "candle" ? waveHeight(p.x, s.t) + 0.7 : p.y;
+    const py = BUOYS.has(p.type) ? waveHeight(p.x, s.t) + 0.7 : p.y;
     const dx = b.x - p.x;
     const dy = b.y - py;
     const reach = p.type === "coin" ? s.mods.coinReach : REACH[p.type];
@@ -538,7 +638,8 @@ function collectPickups(s: GameState) {
     emit(s, p.type);
     switch (p.type) {
       case "coin":
-        s.coins += 1;
+        // Perfect-skip combo multiplies coin value (×2, ×3… capped ×10).
+        s.coins += 1 + Math.min(s.combo, 9);
         b.vx += 1.8;
         burst(s, p.x, py, 8, "spark");
         break;
@@ -577,14 +678,23 @@ function collectPickups(s: GameState) {
         burst(s, p.x, py, 18, "hit");
         break;
       case "dolphin":
-        b.vx += 12 * bm;
-        b.vy = Math.max(b.vy + 6 * bm, 10 * bm);
-        burst(s, p.x, py, 12, "splash");
+        // Flipper uppercut — big vertical pop with forward carry.
+        b.vx += 10 * bm;
+        b.vy = Math.max(b.vy + 19 * bm, 25 * bm);
+        burst(s, p.x, py, 14, "splash");
         break;
       case "geyser":
-        b.vy = Math.max(b.vy + 16 * bm, 20 * bm);
+        b.vy = Math.max(b.vy + 18 * bm, 23 * bm);
         b.vx += 2 * bm;
         burst(s, p.x, py, 18, "splash");
+        break;
+      case "whale":
+        // Trampoline of the gods — straight to the sky.
+        b.vy = Math.max(b.vy + 34 * bm, 42 * bm);
+        b.vx += 10 * bm;
+        s.perfectFlash = 1.2;
+        s.flashText = "WHALE LAUNCH! 🐋";
+        burst(s, p.x, py, 28, "splash");
         break;
       case "storm":
         b.vx *= 0.62;
@@ -595,6 +705,47 @@ function collectPickups(s: GameState) {
         b.vx *= 0.68;
         burst(s, p.x, py, 12, "hit");
         break;
+      case "pump":
+        // Green candle — number go up.
+        b.vy = Math.max(b.vy + 20 * bm, 26 * bm);
+        b.vx += 4 * bm;
+        burst(s, p.x, py, 16, "spark");
+        break;
+      case "wick":
+        // White god candle — vertical moonshot.
+        b.vy = Math.max(b.vy + 30 * bm, 38 * bm);
+        b.vx += 3 * bm;
+        s.perfectFlash = 1.0;
+        s.flashText = "GOD CANDLE! 🕯️";
+        burst(s, p.x, py, 24, "spark");
+        break;
+    }
+  }
+}
+
+/** Hazard types that can award a near-miss thrill bonus. */
+const HAZARDS = new Set<PickupType>(["candle", "storm", "bird", "ufo"]);
+const NEAR_MISS_BAND = 2.4; // meters beyond the hit radius
+
+/** Shaving past a hazard at speed grants a small boost + "CLOSE CALL!". */
+function checkNearMisses(s: GameState) {
+  const b = s.ball;
+  if (Math.hypot(b.vx, b.vy) < 15) return;
+  for (const p of s.pickups) {
+    if (p.taken || !HAZARDS.has(p.type) || s.nearMissed.has(p.id)) continue;
+    // Only credit once the ball is safely past the hazard's center.
+    if (b.x < p.x + 1) continue;
+    if (b.x > p.x + 14) continue;
+    const py = p.type === "candle" ? waveHeight(p.x, s.t) + 0.7 : p.y;
+    const d = Math.hypot(b.x - p.x, b.y - py);
+    const reach = REACH[p.type];
+    if (d > reach && d <= reach + NEAR_MISS_BAND) {
+      s.nearMissed.add(p.id);
+      b.vx *= 1.05;
+      s.perfectFlash = Math.max(s.perfectFlash, 0.7);
+      s.flashText = "CLOSE CALL!";
+      emit(s, "nearmiss");
+      burst(s, b.x, b.y, 6, "spark");
     }
   }
 }

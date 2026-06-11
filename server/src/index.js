@@ -33,7 +33,10 @@ import {
   upgradeLevels,
   coinBalance,
   spentByWallet,
+  challengeFor,
+  CHALLENGE_BONUS,
 } from "./lib.js";
+import { attachLive } from "./live.js";
 
 const app = express();
 app.set("trust proxy", 1); // Render terminates TLS in front of us
@@ -107,12 +110,19 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
     }
 
     const cycleId = currentCycleId();
+    // Daily challenge: qualifying runs earn bonus coins, baked into `coins`
+    // so leaderboards and balances pick them up with zero extra queries.
+    const challenge = challengeFor(cycleId);
+    const challengeDone = value[challenge.stat] >= challenge.min;
+    const bonus = challengeDone ? CHALLENGE_BONUS : 0;
+
     const scores = db.collection("scores");
     await scores.insertOne({
       name: value.name,
       wallet: value.wallet,
       distance: value.distance,
-      coins: value.coins,
+      coins: value.coins + bonus,
+      challengeBonus: bonus,
       skips: value.skips,
       bestCombo: value.bestCombo,
       cycleId,
@@ -128,7 +138,12 @@ app.post("/api/scores", scoreLimiter, async (req, res, next) => {
         { $count: "n" },
       ])
       .toArray();
-    res.json({ ok: true, rank: (better[0]?.n ?? 0) + 1, cycleId });
+    res.json({
+      ok: true,
+      rank: (better[0]?.n ?? 0) + 1,
+      cycleId,
+      challenge: { id: challenge.id, done: challengeDone, bonus },
+    });
   } catch (e) {
     next(e);
   }
@@ -348,6 +363,9 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = Number(process.env.PORT ?? 4000);
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`bball-api listening on :${port}`);
 });
+
+// Live ghost layer (WebSocket) rides the same HTTP server at /live.
+attachLive(server);

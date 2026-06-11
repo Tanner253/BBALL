@@ -89,7 +89,10 @@ export async function startRun(): Promise<string | null> {
 
 export async function submitScore(
   payload: ScoreSubmission
-): Promise<{ ok: true; rank: number } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; rank: number; challengeBonus: number }
+  | { ok: false; error: string }
+> {
   try {
     const res = await fetch(`${API_URL}/api/scores`, {
       method: "POST",
@@ -99,7 +102,7 @@ export async function submitScore(
     const data = await res.json().catch(() => null);
     if (res.ok && data?.ok) {
       window.dispatchEvent(new Event(SCORES_EVENT));
-      return { ok: true, rank: data.rank };
+      return { ok: true, rank: data.rank, challengeBonus: data.challenge?.bonus ?? 0 };
     }
     return { ok: false, error: data?.error ?? `submit failed (${res.status})` };
   } catch {

@@ -70,6 +70,14 @@ export function drawFrame(
   const sx = (wx: number) => (wx - cam.x) * cam.scale;
   const sy = (wy: number) => (cam.top - wy) * cam.scale;
 
+  // Milestone screen shake — short, punchy, decays in the engine.
+  const shaking = s.shake > 0;
+  if (shaking) {
+    const a = s.shake * 9;
+    ctx.save();
+    ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+  }
+
   drawSky(ctx, cam, w, h);
   drawSun(ctx, cam, w, h);
   drawMoon(ctx, cam, w, h);
@@ -82,6 +90,61 @@ export function drawFrame(
   drawWater(ctx, s, cam, w, h, sy, 0.28);
   drawParticles(ctx, s, sx, sy, cam.scale);
   if (s.phase === "charging") drawAim(ctx, s, sx, sy);
+
+  if (shaking) ctx.restore();
+}
+
+/** Other players' live runs, drawn as translucent striped ghost balls.
+ *  (Our own echo is already filtered out by id in live.ts.) */
+export function drawGhosts(
+  ctx: CanvasRenderingContext2D,
+  ghosts: { id: string; name: string; x: number; y: number }[],
+  s: GameState,
+  cam: Camera,
+  w: number
+) {
+  if (ghosts.length === 0) return;
+  const sx = (wx: number) => (wx - cam.x) * cam.scale;
+  const sy = (wy: number) => (cam.top - wy) * cam.scale;
+  const stripes = [C.red, C.orange, C.yellow, C.green, C.blue];
+
+  for (const g of ghosts) {
+    const px = sx(g.x);
+    if (px < -60 || px > w + 60) continue;
+    const py = sy(Math.max(g.y, waveHeight(g.x, s.t)));
+    const r = Math.max(5, BALL_R * cam.scale);
+
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    // Striped ghost ball.
+    for (let i = 0; i < stripes.length; i++) {
+      ctx.fillStyle = stripes[i];
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.arc(
+        px,
+        py,
+        r,
+        (i / stripes.length) * Math.PI * 2 + s.t * 0.8,
+        ((i + 1) / stripes.length) * Math.PI * 2 + s.t * 0.8
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Name tag.
+    if (g.name) {
+      ctx.globalAlpha = 0.75;
+      ctx.font = `600 ${Math.max(9, Math.min(12, r * 0.9))}px ui-monospace, monospace`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(20,40,60,0.9)";
+      ctx.fillText(g.name, px, py - r - 5);
+    }
+    ctx.restore();
+  }
 }
 
 // ---------------- Layers ----------------
@@ -348,6 +411,64 @@ function drawPickups(
         }
       }
       ctx.restore();
+    } else if (p.type === "whale") {
+      // Breaching whale — huge, friendly, extremely bounce-capable.
+      const surf = sy(waveHeight(p.x, s.t));
+      const rise = Math.abs(Math.sin(s.t * 0.9 + p.id)) * scale * 0.8;
+      const r = scale * 3.2;
+      const py = surf - rise;
+      ctx.save();
+      ctx.translate(px, py);
+      // Body.
+      ctx.fillStyle = "#3d6b8f";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.42, -0.08, Math.PI, 0);
+      ctx.quadraticCurveTo(r * 0.9, r * 0.15, r * 0.7, r * 0.2);
+      ctx.lineTo(-r * 0.7, r * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // Belly grooves.
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = Math.max(1, scale * 0.08);
+      for (const o of [0.05, 0.13]) {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.6, r * o + r * 0.05);
+        ctx.quadraticCurveTo(0, r * o + r * 0.16, r * 0.6, r * o + r * 0.05);
+        ctx.stroke();
+      }
+      // Tail flukes.
+      ctx.fillStyle = "#35597a";
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.85, -r * 0.05);
+      ctx.quadraticCurveTo(-r * 1.25, -r * 0.5, -r * 1.45, -r * 0.25);
+      ctx.quadraticCurveTo(-r * 1.3, 0, -r * 1.45, r * 0.18);
+      ctx.quadraticCurveTo(-r * 1.2, r * 0.12, -r * 0.85, r * 0.12);
+      ctx.closePath();
+      ctx.fill();
+      // Eye + smile.
+      ctx.fillStyle = "#10222f";
+      ctx.beginPath();
+      ctx.arc(r * 0.55, -r * 0.08, r * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#10222f";
+      ctx.beginPath();
+      ctx.arc(r * 0.5, r * 0.02, r * 0.18, 0.25, 1.05);
+      ctx.stroke();
+      // Spout.
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      for (let i = 0; i < 3; i++) {
+        const a = s.t * 3 + i * 2.1;
+        ctx.beginPath();
+        ctx.arc(
+          r * 0.18 + Math.sin(a) * scale * 0.18,
+          -r * 0.5 - (i + 1) * scale * 0.3,
+          scale * (0.14 - i * 0.03),
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+      ctx.restore();
     } else if (p.type === "dolphin") {
       const py = sy(p.y + Math.abs(Math.sin(s.t * 1.8 + p.id)) * 1.2);
       const r = scale * 1.1;
@@ -566,23 +687,49 @@ function drawPickups(
       ctx.fill();
       ctx.restore();
     } else {
-      // Red candle buoy — the enemy of every chart.
+      // Candle buoys — red dumps you, green pumps you, white sends you to god.
       const py = sy(waveHeight(p.x, s.t) + 0.7);
       const bw = scale * 0.62;
-      const bh = scale * 1.5;
+      const bh = scale * (p.type === "wick" ? 2.1 : 1.5);
+      const body = p.type === "pump" ? C.green : p.type === "wick" ? "#f7f9fd" : C.red;
+      const wick = p.type === "pump" ? "#15803c" : p.type === "wick" ? "#cdd5e2" : "#c22222";
+      const edge =
+        p.type === "pump"
+          ? "rgba(9,92,44,0.7)"
+          : p.type === "wick"
+          ? "rgba(130,142,162,0.8)"
+          : "rgba(120,10,10,0.7)";
       ctx.save();
-      ctx.strokeStyle = "#c22222";
+      if (p.type === "wick") {
+        // God candle glows so it reads as the jackpot it is.
+        ctx.shadowColor = "rgba(255,255,255,0.95)";
+        ctx.shadowBlur = scale * 0.9;
+      } else if (p.type === "pump") {
+        ctx.shadowColor = "rgba(36,162,77,0.7)";
+        ctx.shadowBlur = scale * 0.5;
+      }
+      ctx.strokeStyle = wick;
       ctx.lineWidth = Math.max(2, scale * 0.1);
       ctx.beginPath();
       ctx.moveTo(px, py - bh * 0.85);
       ctx.lineTo(px, py + bh * 0.85);
       ctx.stroke();
-      ctx.fillStyle = C.red;
+      ctx.fillStyle = body;
       ctx.beginPath();
       ctx.roundRect(px - bw / 2, py - bh / 2, bw, bh, bw * 0.2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(120,10,10,0.7)";
+      ctx.strokeStyle = edge;
       ctx.stroke();
+      // Up-arrow tick on the boost candles.
+      if (p.type !== "candle") {
+        ctx.fillStyle = p.type === "pump" ? "#eafff2" : "#8fa3c0";
+        ctx.beginPath();
+        ctx.moveTo(px, py - bh * 0.32);
+        ctx.lineTo(px - bw * 0.28, py - bh * 0.05);
+        ctx.lineTo(px + bw * 0.28, py - bh * 0.05);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
   }
