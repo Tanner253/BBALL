@@ -594,24 +594,31 @@ function spawnAhead(s: GameState) {
       continue;
     }
 
+    // Marathon pressure: every 100km, red candles and storm clouds get
+    // +50% more common (capped), so god runs have to dodge harder.
+    const hazardMul = 1 + 0.5 * Math.floor(x / 100_000);
+
     // --- Surface lane (water level) ---
     // Kept sparse on purpose: surface boosts re-launch the ball, so a dense
     // lane makes runs effectively endless and turns the game into a movie.
+    // Cumulative thresholds: hazard scaling widens only the candle band
+    // without changing how often the boosts roll.
     const sr = Math.random();
-    if (x > 150 && sr < 0.012) {
+    let th = 0;
+    if (x > 150 && sr < (th += 0.012)) {
       // Rare breaching whale — the jackpot bounce.
       addPickup(s, "whale", x + 6, 0);
-    } else if (x > 200 && sr < 0.027) {
+    } else if (x > 200 && sr < (th += 0.015)) {
       // Rare white god candle — massive vertical spike.
       addPickup(s, "wick", x, 0);
-    } else if (x > 80 && sr < 0.13) {
+    } else if (x > 80 && sr < (th += Math.min(0.103 * hazardMul, 0.35))) {
       addPickup(s, "candle", x, 0);
-    } else if (x > 70 && sr < 0.19) {
+    } else if (x > 70 && sr < (th += 0.06)) {
       // Green candle — number go up.
       addPickup(s, "pump", x, 0);
-    } else if (x > 100 && sr < 0.25) {
+    } else if (x > 100 && sr < (th += 0.06)) {
       addPickup(s, "geyser", x + 4, 0);
-    } else if (x > 60 && sr < 0.33) {
+    } else if (x > 60 && sr < (th += 0.08)) {
       addPickup(s, "dolphin", x + 2, 1.5 + Math.random() * 3);
     }
 
@@ -646,7 +653,10 @@ function spawnAhead(s: GameState) {
         addPickup(s, "balloon", x + 9, 22 + Math.random() * 40);
       } else if (mr < 0.12 * br + 0.1 * br + 0.09) {
         addPickup(s, "bird", x + 11, 20 + Math.random() * 28);
-      } else if (mr < 0.12 * br + 0.1 * br + 0.09 + 0.11 && x > 160) {
+      } else if (
+        mr < 0.12 * br + 0.1 * br + 0.09 + Math.min(0.11 * hazardMul, 0.4) &&
+        x > 160
+      ) {
         addPickup(s, "storm", x + 5, 24 + Math.random() * 42);
       }
     }
