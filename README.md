@@ -58,7 +58,7 @@ deployed to Render via the `render.yaml` blueprint at the repo root.
 1. In Render: **New → Blueprint**, point it at this GitHub repo.
 2. When prompted, paste your MongoDB connection string into `MONGODB_URI`.
 3. In Vercel, set `NEXT_PUBLIC_API_URL` to the Render service URL
-   (e.g. `https://bball-api.onrender.com`) for Production + Preview.
+   (currently `https://bball-1g63.onrender.com`) for Production + Preview.
 
 Environments:
 

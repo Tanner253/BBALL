@@ -8,7 +8,7 @@ export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "development"
     ? "http://localhost:4000"
-    : "https://bball-api.onrender.com")
+    : "https://bball-1g63.onrender.com")
 ).trim();
 
 /** Fired on window after a successful score submit so panels refresh. */
