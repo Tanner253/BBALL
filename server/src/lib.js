@@ -33,15 +33,17 @@ export const LIMITS = {
  * coins (daily balance, resets 00:00 UTC) and reset every UTC day too.
  */
 export const UPGRADES = {
-  dunk: { name: "Deeper Dunk", costs: [10, 30, 70] },
-  jetpack: { name: "Jetpack", costs: [12, 35, 90] },
-  power: { name: "Super Boosts", costs: [10, 30, 70] },
-  radar: { name: "Boost Radar", costs: [8, 20, 45] },
-  magnet: { name: "Coin Rain", costs: [8, 20, 45] },
-  bounce: { name: "Bouncy Ball", costs: [10, 25, 60] },
+  dunk: { name: "Deeper Dunk", costs: [10, 40, 130, 400, 1100] },
+  jetpack: { name: "Jetpack", costs: [12, 50, 160, 500, 1400] },
+  power: { name: "Super Boosts", costs: [10, 40, 130, 400, 1100] },
+  radar: { name: "Boost Radar", costs: [8, 30, 100, 320, 900] },
+  magnet: { name: "Coin Rain", costs: [8, 30, 100, 320, 900] },
+  bounce: { name: "Bouncy Ball", costs: [10, 40, 120, 380, 1000] },
+  aero: { name: "Slipstream", costs: [15, 60, 200, 600, 1600] },
+  greed: { name: "Golden Touch", costs: [20, 80, 260, 800, 2000] },
 };
 
-export const MAX_UPGRADE_LEVEL = 3;
+export const MAX_UPGRADE_LEVEL = 5;
 
 /**
  * Daily challenge — deterministic from the cycle date so client and server

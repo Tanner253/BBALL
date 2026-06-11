@@ -70,7 +70,7 @@ export function CanvasUpgrades() {
         )}
         <div className="mt-2 flex flex-col gap-1.5">
           {UPGRADE_LIST.map((u) => {
-            const level = state.levels[u.id];
+            const level = state.levels[u.id] ?? 0;
             const maxed = level >= MAX_UPGRADE_LEVEL;
             const cost = maxed ? null : u.costs[level];
             const affordable = cost !== null && state.balance >= cost;

@@ -109,6 +109,10 @@ export type Mods = {
   coinReach: number;
   /** Extra restitution added to water bounces (Bouncy Ball). */
   skipBounce: number;
+  /** Air drag multiplier, <1 = slicker ball (Slipstream). */
+  dragMul: number;
+  /** Bonus coins added to every coin/satellite pickup (Golden Touch). */
+  coinBonus: number;
 };
 
 export const DEFAULT_MODS: Mods = {
@@ -119,6 +123,8 @@ export const DEFAULT_MODS: Mods = {
   coinRateMul: 1,
   coinReach: 1.5,
   skipBounce: 0,
+  dragMul: 1,
+  coinBonus: 0,
 };
 
 /** Launch speed (m/s) for a given charge — shared with the aim preview. */
@@ -174,6 +180,9 @@ const SPACE_ALT = 100;
 
 const DIVE_ACCEL = 52;
 const AIR_DRAG = 0.038;
+/** Extra horizontal drag while holding — diving is a skill tool with a real
+ *  cost: hold too long and the ball bleeds out and stops. */
+const HOLD_DRAG = 0.55;
 const MAX_DUNK_DEPTH = 3.0; // visual depth while charging (m)
 const MIN_SKIP_SPEED = 7;
 const SETTLE_SPEED = 0.6;
@@ -324,7 +333,11 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   const b = s.ball;
 
   b.vy -= GRAVITY * dt;
-  if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) b.vy -= DIVE_ACCEL * dt;
+  if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) {
+    b.vy -= DIVE_ACCEL * dt;
+    // Tucking in is a brake: release on the way up to keep your speed.
+    b.vx *= Math.exp(-HOLD_DRAG * dt);
+  }
 
   // Weather never touches the ball directly — it only shapes the waves.
 
@@ -348,7 +361,7 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
 
   // Air thins out with altitude — space runs glide much farther.
   const density = 0.25 + 0.75 * Math.exp(-Math.max(0, b.y) / 60);
-  b.vx *= Math.exp(-AIR_DRAG * density * dt);
+  b.vx *= Math.exp(-AIR_DRAG * s.mods.dragMul * density * dt);
   b.vy *= Math.exp(-0.015 * density * dt);
 
   b.x += b.vx * dt;
@@ -407,20 +420,25 @@ function handleWaterContact(s: GameState, surface: number) {
   if (speed > MIN_SKIP_SPEED && impactDeg < 52) {
     // Skip. Perfect = intentional dive INTO a wave dip — the trough acts as
     // a ramp and fires the ball back up HIGHER than it came in.
-    const perfect = s.holding && impactDeg >= 8 && impactDeg <= 40 && dip;
+    const perfect = s.holding && impactDeg >= 8 && dip;
     // Held dive-slams only gain height in a dip — slamming flat water or a
     // crest while diving just buries the ball and bleeds energy.
-    const e = perfect
+    let e = perfect
       ? 1.12 + s.mods.skipBounce * 0.5
       : s.holding && !dip
       ? 0.48 + 0.14 * (1 - impactDeg / 52) + s.mods.skipBounce
       : 0.62 + 0.2 * (1 - impactDeg / 52) + (dip ? 0.18 : 0) + s.mods.skipBounce;
+    e += 0.2 * downhill;
+    // Only PERFECTs may gain energy — passive bounces always decay, no
+    // matter how stacked the upgrades, so every run ends eventually.
+    if (!perfect) e = Math.min(e, 0.9);
     b.y = surface + 0.02;
-    b.vy = Math.min(-b.vy * (e + 0.2 * downhill), 34); // cap chained perfects
+    b.vy = Math.min(-b.vy * e, 34); // cap chained perfects
     // Angular momentum off the wave face — downhill ramps sling the ball
     // forward, inclines sap it. A beachball never bounces backwards.
-    b.vx *= ((perfect ? 1.07 : 0.95) + s.mods.skipBounce * 0.25) *
+    const fwd = ((perfect ? 1.07 : 0.95) + s.mods.skipBounce * 0.25) *
       (1 + 0.22 * downhill - 0.18 * uphill);
+    b.vx *= Math.min(fwd, perfect ? 1.06 : 1.0);
     b.vx = Math.max(b.vx, 0.5);
     s.skips += 1;
     if (perfect) {
@@ -436,16 +454,38 @@ function handleWaterContact(s: GameState, surface: number) {
     burst(s, b.x, surface, perfect ? 18 : 10, "splash");
   } else if (speed > MIN_SKIP_SPEED) {
     // Steep impact: it's a beachball — buoyancy pops it back up instead of
-    // swallowing the bounce. Dip slams compress the trough and fire back
-    // harder; held slams outside a dip just bury the ball.
-    const base = dip ? 0.77 : s.holding ? 0.42 : 0.55;
+    // swallowing the bounce. A HELD slam into a dip is the perfect move
+    // (boosted flight makes most landings steep, so this is where combos
+    // actually live); held slams outside a dip just bury the ball.
+    const perfect = s.holding && dip;
+    const base = perfect ? 0.95 : dip ? 0.77 : s.holding ? 0.42 : 0.55;
     b.y = surface + 0.02;
-    b.vy = Math.abs(b.vy) * (base + 0.18 * downhill + s.mods.skipBounce * 0.9);
+    // Same rule as skips: only PERFECTs can come back with interest.
+    const rest = base + 0.18 * downhill + s.mods.skipBounce * 0.9;
+    b.vy = Math.abs(b.vy) * (perfect ? rest : Math.min(rest, 0.88));
+    if (perfect) b.vy = Math.min(b.vy, 38); // no infinite pogo to space
     // Downhill faces convert some of the slam into forward roll.
-    b.vx = Math.max(0.5, b.vx * (0.86 + s.mods.skipBounce * 0.3) + downhill * speed * 0.1 - uphill * b.vx * 0.2);
-    s.combo = 0;
-    emit(s, "bounce");
-    burst(s, b.x, surface, 16, "splash");
+    b.vx = Math.max(
+      0.5,
+      Math.min(
+        b.vx * ((perfect ? 1.0 : 0.86) + s.mods.skipBounce * 0.3) +
+          downhill * speed * 0.1 -
+          uphill * b.vx * 0.2,
+        b.vx * (perfect ? 1.05 : 1.0)
+      )
+    );
+    if (perfect) {
+      s.skips += 1;
+      s.combo += 1;
+      s.bestCombo = Math.max(s.bestCombo, s.combo);
+      s.perfectFlash = 0.8;
+      s.flashText = PERFECT_WORDS[Math.floor(Math.random() * PERFECT_WORDS.length)];
+      emit(s, "perfect");
+    } else {
+      s.combo = 0;
+      emit(s, "bounce");
+    }
+    burst(s, b.x, surface, perfect ? 18 : 16, "splash");
   } else {
     s.phase = "settling";
     s.combo = 0;
@@ -555,33 +595,40 @@ function spawnAhead(s: GameState) {
     }
 
     // --- Surface lane (water level) ---
+    // Kept sparse on purpose: surface boosts re-launch the ball, so a dense
+    // lane makes runs effectively endless and turns the game into a movie.
     const sr = Math.random();
-    if (x > 150 && sr < 0.045) {
+    if (x > 150 && sr < 0.012) {
       // Rare breaching whale — the jackpot bounce.
       addPickup(s, "whale", x + 6, 0);
-    } else if (x > 200 && sr < 0.075) {
+    } else if (x > 200 && sr < 0.027) {
       // Rare white god candle — massive vertical spike.
       addPickup(s, "wick", x, 0);
-    } else if (x > 80 && sr < 0.18) {
+    } else if (x > 80 && sr < 0.13) {
       addPickup(s, "candle", x, 0);
-    } else if (x > 70 && sr < 0.28) {
+    } else if (x > 70 && sr < 0.19) {
       // Green candle — number go up.
       addPickup(s, "pump", x, 0);
-    } else if (x > 100 && sr < 0.4) {
+    } else if (x > 100 && sr < 0.25) {
       addPickup(s, "geyser", x + 4, 0);
-    } else if (x > 60 && sr < 0.54) {
+    } else if (x > 60 && sr < 0.33) {
       addPickup(s, "dolphin", x + 2, 1.5 + Math.random() * 3);
     }
 
-    // Upgrade-driven spawn rates (Coin Rain / Boost Radar).
+    // Upgrade-driven spawn rates (Coin Rain / Boost Radar). The multipliers
+    // barely touch the low band: a saturated waterline lets the ball farm
+    // coins and re-boost while skimming, which plays the game for you.
+    // Upgrades enrich the mid sky and space instead — where you earn it.
     const cr = s.mods.coinRateMul;
     const br = s.mods.boostRateMul;
+    const lowCr = 1 + (cr - 1) * 0.2;
+    const lowBr = 1 + (br - 1) * 0.15;
 
     // --- Low sky (2–18 m): bread-and-butter coins and rings ---
-    if (Math.random() < 0.32 * cr) {
+    if (Math.random() < Math.min(0.32 * lowCr, 0.4)) {
       spawnCoinPattern(s, x, 2 + Math.random() * 12);
     }
-    if (Math.random() < 0.16 * br) {
+    if (Math.random() < Math.min(0.16 * lowBr, 0.2)) {
       addPickup(s, "ring", x + 6, 3 + Math.random() * 15);
     } else if (Math.random() < 0.07 && x > 90) {
       addPickup(s, "bird", x + 8, 6 + Math.random() * 12);
@@ -664,8 +711,8 @@ function collectPickups(s: GameState) {
     switch (p.type) {
       case "coin":
         // Perfect-skip combo multiplies coin value (×2, ×3… capped ×10).
-        s.coins += 1 + Math.min(s.combo, 9);
-        b.vx += 1.8;
+        // Coins are money only — they never push the ball.
+        s.coins += 1 + Math.min(s.combo, 9) + s.mods.coinBonus;
         burst(s, p.x, py, 8, "spark");
         break;
       case "ring":
@@ -679,7 +726,7 @@ function collectPickups(s: GameState) {
         burst(s, p.x, py, 18, "spark");
         break;
       case "sat":
-        s.coins += 5;
+        s.coins += 5 + s.mods.coinBonus;
         b.vx += 22 * bm;
         b.vy += 6 * bm;
         burst(s, p.x, py, 24, "spark");
