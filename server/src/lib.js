@@ -98,6 +98,8 @@ export async function getDb() {
           db
             .collection("purchases")
             .createIndex({ wallet: 1, upgrade: 1, cycleId: 1, level: 1 }, { unique: true }),
+          // Chat history is loaded/trimmed by id, newest first.
+          db.collection("chat").createIndex({ id: -1 }),
         ]);
         return db;
       })

@@ -38,12 +38,16 @@ export function ChatPanel() {
     return () => window.removeEventListener(SCORES_EVENT, sync);
   }, []);
 
-  // Stick to the bottom when new messages arrive (unless scrolled up).
+  // Jump to the newest message when history first loads, then stick to the
+  // bottom as messages arrive (unless the reader scrolled up).
+  const loadedRef = useRef(false);
   useEffect(() => {
     const el = listRef.current;
-    if (!el) return;
+    if (!el || messages.length === 0) return;
+    const firstLoad = !loadedRef.current;
+    loadedRef.current = true;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
+    if (firstLoad || nearBottom) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const send = () => {

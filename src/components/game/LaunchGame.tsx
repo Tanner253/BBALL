@@ -91,16 +91,26 @@ export function LaunchGame() {
     let last = performance.now();
     let lastPhase: Phase = stateRef.current.phase;
 
-    const tick = (now: number) => {
-      const dt = Math.min(0.033, (now - last) / 1000);
+    const SIM_DT = 1 / 60;
+
+    // Advance the sim by real elapsed time in fixed sub-steps. rAF pauses in
+    // hidden tabs, so this is also driven by a background interval — the run
+    // keeps playing (and catches up) when the player tabs out.
+    const simulate = (now: number) => {
+      let elapsed = Math.min(30, (now - last) / 1000);
       last = now;
       const s = stateRef.current;
 
-      step(s, dt, holdingRef.current);
+      while (elapsed > 1e-6) {
+        const dt = Math.min(SIM_DT, elapsed);
+        elapsed -= dt;
+        step(s, dt, holdingRef.current);
+      }
 
-      // Drain engine events into sound effects.
+      // Drain engine events into sound effects (skip while hidden so a long
+      // catch-up doesn't fire a burst of stale sounds).
       if (s.events.length) {
-        for (const e of s.events) playSfx(e);
+        if (!document.hidden) for (const e of s.events) playSfx(e);
         s.events.length = 0;
       }
 
@@ -120,6 +130,17 @@ export function LaunchGame() {
         }
       }
 
+      // Keep streaming our ghost even while tabbed out.
+      if (s.phase === "flying") {
+        sendLivePos(nameRef.current || "anon", s.ball.x, s.ball.y);
+      }
+    };
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.033, (now - last) / 1000);
+      simulate(now);
+      const s = stateRef.current;
+
       // Resize to wrapper + device pixel ratio.
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const w = wrap.clientWidth;
@@ -136,9 +157,6 @@ export function LaunchGame() {
       // Live layer: stream our run, draw everyone else's (interpolated).
       const ghosts = updateGhosts(dt);
       drawGhosts(ctx, ghosts, s, camRef.current, w);
-      if (s.phase === "flying") {
-        sendLivePos(nameRef.current || "anon", s.ball.x, s.ball.y);
-      }
       if (liveCountRef.current) {
         liveCountRef.current.textContent =
           ghosts.length > 0
@@ -175,7 +193,17 @@ export function LaunchGame() {
     };
 
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+
+    // Hidden tabs stop rAF; a throttled interval (browsers clamp it to ~1/s
+    // in the background) keeps the sim stepping so the run never pauses.
+    const bgTimer = setInterval(() => {
+      if (document.hidden) simulate(performance.now());
+    }, 250);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearInterval(bgTimer);
+    };
   }, []);
 
   // ---------------- Input ----------------

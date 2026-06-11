@@ -1,7 +1,8 @@
 /**
  * Live layer — every in-flight run streams its position here and everyone
  * sees everyone else's ball as a ghost on their canvas, plus a global chat
- * for signed-in players. Pure in-memory, nothing touches the database.
+ * for signed-in players. Positions are pure in-memory; chat is mirrored to
+ * the `chat` collection so history survives restarts/redeploys.
  *
  * Protocol (JSON):
  *   client -> server: { t: "pos", name, x, y }          (~10Hz while flying)
@@ -16,11 +17,12 @@
 
 import { WebSocketServer } from "ws";
 import { sanitizeChat, cleanName, isSignedIn } from "./chat.js";
+import { getDb } from "./lib.js";
 
 const STALE_MS = 5000;
 const BROADCAST_MS = 100;
 const MAX_MSG_BYTES = 700; // chat messages are bigger than pos updates
-const CHAT_HISTORY_MAX = 60;
+const CHAT_HISTORY_MAX = 500;
 const CHAT_COOLDOWN_MS = 1500;
 
 export function attachLive(server) {
@@ -28,9 +30,26 @@ export function attachLive(server) {
   /** ws -> { name, x, y, at } for connections currently mid-run. */
   const flying = new Map();
   /** Rolling global chat log, newest last. */
-  const chatLog = [];
+  let chatLog = [];
   let nextId = 1;
   let nextMsgId = 1;
+
+  // Warm the in-memory log from Mongo so chat history survives restarts.
+  // Chat still works (memory-only) if the DB is unreachable.
+  getDb()
+    .then(async (db) => {
+      const rows = await db
+        .collection("chat")
+        .find({}, { projection: { _id: 0 } })
+        .sort({ id: -1 })
+        .limit(CHAT_HISTORY_MAX)
+        .toArray();
+      rows.reverse();
+      // Don't clobber messages that arrived while we were loading.
+      chatLog = [...rows, ...chatLog].slice(-CHAT_HISTORY_MAX);
+      nextMsgId = Math.max(nextMsgId, ...rows.map((r) => r.id + 1));
+    })
+    .catch((e) => console.error("chat history load failed:", e.message));
 
   wss.on("connection", (ws) => {
     ws.liveId = String(nextId++);
@@ -81,10 +100,23 @@ export function attachLive(server) {
     const msg = { id: nextMsgId++, name: cleanName(m.name), text, ts: now };
     chatLog.push(msg);
     if (chatLog.length > CHAT_HISTORY_MAX) chatLog.shift();
+    persistChat(msg);
     const payload = JSON.stringify({ t: "chat", msg });
     for (const c of wss.clients) {
       if (c.readyState === 1) c.send(payload);
     }
+  }
+
+  /** Fire-and-forget mirror to Mongo; trims old rows every 50 messages. */
+  function persistChat(msg) {
+    getDb()
+      .then(async (db) => {
+        await db.collection("chat").insertOne({ ...msg });
+        if (msg.id % 50 === 0) {
+          await db.collection("chat").deleteMany({ id: { $lte: msg.id - CHAT_HISTORY_MAX } });
+        }
+      })
+      .catch((e) => console.error("chat persist failed:", e.message));
   }
 
   setInterval(() => {

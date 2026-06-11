@@ -35,7 +35,7 @@ const ghosts = new Map<string, Ghost>();
 let chatLog: ChatMsg[] = [];
 let chatError: string | null = null;
 const chatListeners = new Set<() => void>();
-const CHAT_MAX = 60;
+const CHAT_MAX = 500;
 
 function notifyChat() {
   for (const l of chatListeners) l();
