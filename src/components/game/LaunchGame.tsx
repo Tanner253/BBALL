@@ -271,15 +271,24 @@ export function LaunchGame() {
   }, []);
 
   useEffect(() => {
+    // Space only drives the game when the player isn't typing somewhere
+    // (chat box, name/wallet inputs, …).
+    const typing = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      return (
+        !!t &&
+        (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)
+      );
+    };
     const down = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
+      if (e.code === "Space" && !typing(e)) {
         // Always block page scroll — including key-repeat events.
         e.preventDefault();
         if (!e.repeat) press();
       }
     };
     const up = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
+      if (e.code === "Space" && !typing(e)) {
         e.preventDefault();
         release();
       }
