@@ -1,0 +1,21 @@
+# Render Blueprint — deploys the bball-api leaderboard server.
+# MongoDB is hosted on MongoDB Atlas (free M0 tier); set MONGODB_URI in the
+# Render dashboard when prompted during blueprint setup.
+services:
+  - type: web
+    name: bball-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: MONGODB_URI
+        sync: false # paste your MongoDB Atlas connection string in the dashboard
+      - key: MONGODB_DB
+        value: bball
+      - key: ALLOWED_ORIGINS
+        value: https://bball.fun,https://www.bball.fun
+      - key: NODE_VERSION
+        value: "22"

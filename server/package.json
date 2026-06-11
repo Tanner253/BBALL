@@ -1,0 +1,20 @@
+{
+  "name": "bball-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Global leaderboard API for the Beachball Launch game (bball.fun)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch --env-file-if-exists=.env src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "mongodb": "^7.3.0"
+  }
+}

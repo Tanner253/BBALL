@@ -10,6 +10,7 @@ import { ChartIcon, TelegramIcon, XIcon } from "./SocialIcons";
 
 const links = [
   { href: "/", label: "Home" },
+  { href: "/game", label: "Game" },
   { href: "/memes", label: "Meme Depot" },
   { href: "/lore", label: "Lore" },
 ];
