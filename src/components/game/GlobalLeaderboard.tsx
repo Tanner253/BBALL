@@ -329,8 +329,11 @@ function PayoutsList({ winners }: { winners: Winners | null }) {
 
 function formatCountdown(ms: number): string {
   const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  // 48h coin cycles can have more than a day left — show it explicitly.
+  return d > 0 ? `${d}d ${hms}` : hms;
 }

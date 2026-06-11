@@ -6,6 +6,7 @@
  */
 
 import { BALL_R, GameState, GRAVITY, launchSpeed, waveHeight } from "./engine";
+import { GAME_WEATHER } from "./weather";
 
 const C = {
   sky1: "#fff4d6",
@@ -82,6 +83,7 @@ export function drawFrame(
   drawSun(ctx, cam, w, h);
   drawMoon(ctx, cam, w, h);
   drawClouds(ctx, cam, w, h, sy);
+  drawStorm(ctx, s, w, h);
   drawWater(ctx, s, cam, w, h, sy, 0.8);
   drawMarkers(ctx, s, cam, w, sx, sy);
   drawPickups(ctx, s, sx, sy, cam.scale, w);
@@ -145,6 +147,35 @@ export function drawGhosts(
     }
     ctx.restore();
   }
+}
+
+/** Storm pass — sky darkens and rain sweeps in as storminess rises. */
+function drawStorm(ctx: CanvasRenderingContext2D, s: GameState, w: number, h: number) {
+  const storm = GAME_WEATHER.storm;
+  if (storm < 0.25) return;
+  const k = (storm - 0.25) / 0.75; // 0..1 over the visible range
+
+  ctx.save();
+  ctx.fillStyle = `rgba(46,58,78,${0.32 * k})`;
+  ctx.fillRect(0, 0, w, h);
+
+  // Rain streaks, angled with the wind. Deterministic per-streak phase so the
+  // pattern scrolls instead of sparkling randomly.
+  if (k > 0.35) {
+    const drops = Math.floor(40 * k);
+    const slant = GAME_WEATHER.wind * 4;
+    ctx.strokeStyle = `rgba(210,225,245,${0.35 * k})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < drops; i++) {
+      const px = ((rnd(i) * 1.3 + s.t * (0.18 + rnd(i + 50) * 0.12)) % 1.2) * w - w * 0.1;
+      const py = ((rnd(i + 100) + s.t * (0.5 + rnd(i + 150) * 0.3)) % 1.1) * h;
+      ctx.moveTo(px, py);
+      ctx.lineTo(px - slant, py + 14);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // ---------------- Layers ----------------

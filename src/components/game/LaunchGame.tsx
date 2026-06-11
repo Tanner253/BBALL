@@ -56,6 +56,7 @@ export function LaunchGame() {
   // Display name streamed with live positions (refreshed after submits).
   const nameRef = useRef("");
   const liveCountRef = useRef<HTMLSpanElement>(null);
+  const weatherRef = useRef<HTMLSpanElement>(null);
 
   // Fast-changing HUD numbers are written straight to the DOM (no re-render).
   const distRef = useRef<HTMLSpanElement>(null);
@@ -152,6 +153,9 @@ export function LaunchGame() {
       if (statsRef.current) {
         const speed = Math.round(Math.hypot(s.ball.vx, s.ball.vy) * 3.6);
         statsRef.current.textContent = `$${s.coins} · ${s.skips} skips · ${speed} km/h`;
+      }
+      if (weatherRef.current) {
+        weatherRef.current.textContent = `🌊 ${GAME_WEATHER.label}`;
       }
       if (powerWrapRef.current) {
         powerWrapRef.current.style.opacity = s.phase === "charging" ? "1" : "0";
@@ -297,8 +301,11 @@ export function LaunchGame() {
           >
             $0 · 0 skips · 0 km/h
           </span>
-          <span className="block font-mono text-[9px] sm:text-[10px] text-[var(--ink-mute)]">
-            🌊 today: {GAME_WEATHER.label}
+          <span
+            ref={weatherRef}
+            className="block font-mono text-[9px] sm:text-[10px] text-[var(--ink-mute)]"
+          >
+            🌊 {GAME_WEATHER.label}
           </span>
           <span
             ref={liveCountRef}

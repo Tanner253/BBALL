@@ -5,7 +5,7 @@
  * Rendering and React wiring live elsewhere; this file only mutates GameState.
  */
 
-import { GAME_WEATHER } from "./weather";
+import { GAME_WEATHER, updateWeather } from "./weather";
 
 export type Phase = "ready" | "charging" | "flying" | "settling" | "over";
 
@@ -181,7 +181,9 @@ const SETTLE_SPEED = 0.6;
 export function createInitialState(mods: Mods = DEFAULT_MODS): GameState {
   return {
     phase: "ready",
-    t: 0,
+    // Wave phase is anchored to the UTC clock so every player worldwide sees
+    // the same swell at the same moment (modulo a day to keep floats small).
+    t: (Date.now() % 86_400_000) / 1000,
     ball: { x: 0, y: 0, vx: 0, vy: 0, spin: 0 },
     charge: 0,
     chargePhase: 0,
@@ -261,6 +263,8 @@ export function launch(s: GameState) {
 }
 
 export function step(s: GameState, dt: number, holding: boolean) {
+  // Weather drifts over the day — identical for every player (UTC-seeded).
+  updateWeather();
   s.t += dt;
   s.holding = holding;
   s.perfectFlash = Math.max(0, s.perfectFlash - dt);
@@ -322,8 +326,7 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   b.vy -= GRAVITY * dt;
   if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) b.vy -= DIVE_ACCEL * dt;
 
-  // Today's global wind — same push (or fight) for every player.
-  b.vx += GAME_WEATHER.wind * dt;
+  // Weather never touches the ball directly — it only shapes the waves.
 
   // Jetpack afterburner (daily upgrade): thrust right after launch.
   if (s.jetpackLeft > 0) {
@@ -384,22 +387,41 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   }
 }
 
+/** Local wave slope at x: negative = downhill ramp in the direction of
+ *  travel (back face of a wave), positive = incline (front face). */
+function waveSlope(x: number, t: number): number {
+  return (waveHeight(x + 0.6, t) - waveHeight(x - 0.6, t)) / 1.2;
+}
+
 function handleWaterContact(s: GameState, surface: number) {
   const b = s.ball;
   const speed = Math.hypot(b.vx, b.vy);
   const impactDeg = (Math.atan2(-b.vy, Math.max(0.001, b.vx)) * 180) / Math.PI;
+  const dip = inWaveDip(b.x, s.t);
+  // The wave face acts as a ramp: landing on a downhill slope redirects the
+  // slam into forward+up momentum; an uphill incline eats it.
+  const slope = waveSlope(b.x, s.t);
+  const downhill = Math.min(1, Math.max(0, -slope));
+  const uphill = Math.min(1, Math.max(0, slope));
 
   if (speed > MIN_SKIP_SPEED && impactDeg < 52) {
     // Skip. Perfect = intentional dive INTO a wave dip — the trough acts as
     // a ramp and fires the ball back up HIGHER than it came in.
-    const perfect = s.holding && impactDeg >= 8 && impactDeg <= 40 && inWaveDip(b.x, s.t);
-    // Bouncy Ball upgrade pushes regular skips toward perfect-tier energy.
+    const perfect = s.holding && impactDeg >= 8 && impactDeg <= 40 && dip;
+    // Held dive-slams only gain height in a dip — slamming flat water or a
+    // crest while diving just buries the ball and bleeds energy.
     const e = perfect
       ? 1.12 + s.mods.skipBounce * 0.5
-      : 0.62 + 0.2 * (1 - impactDeg / 52) + s.mods.skipBounce;
+      : s.holding && !dip
+      ? 0.48 + 0.14 * (1 - impactDeg / 52) + s.mods.skipBounce
+      : 0.62 + 0.2 * (1 - impactDeg / 52) + (dip ? 0.18 : 0) + s.mods.skipBounce;
     b.y = surface + 0.02;
-    b.vy = Math.min(-b.vy * e, 34); // cap so chained perfects don't go ballistic
-    b.vx *= (perfect ? 1.07 : 0.95) + s.mods.skipBounce * 0.25;
+    b.vy = Math.min(-b.vy * (e + 0.2 * downhill), 34); // cap chained perfects
+    // Angular momentum off the wave face — downhill ramps sling the ball
+    // forward, inclines sap it. A beachball never bounces backwards.
+    b.vx *= ((perfect ? 1.07 : 0.95) + s.mods.skipBounce * 0.25) *
+      (1 + 0.22 * downhill - 0.18 * uphill);
+    b.vx = Math.max(b.vx, 0.5);
     s.skips += 1;
     if (perfect) {
       s.combo += 1;
@@ -414,10 +436,13 @@ function handleWaterContact(s: GameState, surface: number) {
     burst(s, b.x, surface, perfect ? 18 : 10, "splash");
   } else if (speed > MIN_SKIP_SPEED) {
     // Steep impact: it's a beachball — buoyancy pops it back up instead of
-    // swallowing the bounce. Energy bleeds fast, but it never dies flat.
+    // swallowing the bounce. Dip slams compress the trough and fire back
+    // harder; held slams outside a dip just bury the ball.
+    const base = dip ? 0.77 : s.holding ? 0.42 : 0.55;
     b.y = surface + 0.02;
-    b.vy = Math.abs(b.vy) * (0.55 + s.mods.skipBounce * 0.9);
-    b.vx *= 0.86 + s.mods.skipBounce * 0.3;
+    b.vy = Math.abs(b.vy) * (base + 0.18 * downhill + s.mods.skipBounce * 0.9);
+    // Downhill faces convert some of the slam into forward roll.
+    b.vx = Math.max(0.5, b.vx * (0.86 + s.mods.skipBounce * 0.3) + downhill * speed * 0.1 - uphill * b.vx * 0.2);
     s.combo = 0;
     emit(s, "bounce");
     burst(s, b.x, surface, 16, "splash");

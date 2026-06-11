@@ -22,8 +22,9 @@ export default function GamePage() {
           </h1>
           <p className="mt-3 text-[var(--ink-soft)] max-w-xl">
             Hold the ball underwater. The deeper the dunk, the harder it flies — you know
-            how this works. Skip it across the ocean and post your distance. Waves and wind
-            reshuffle daily at 00:00 UTC — identical for every player, every launch.
+            how this works. Skip it across the ocean and post your distance. Weather rolls
+            through all day — storms swell the waves — and it&apos;s identical for every
+            player at every moment.
           </p>
         </header>
 

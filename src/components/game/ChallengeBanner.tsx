@@ -2,17 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { CHALLENGE_BONUS, todayChallenge, type Challenge } from "@/lib/challenge";
-import { GAME_WEATHER } from "./weather";
+import { weatherAt } from "./weather";
 
 /**
  * Daily challenge + weather strip under the canvas. Client component because
- * both rotate at 00:00 UTC and the page itself is statically prerendered.
+ * both rotate on the UTC clock and the page itself is statically prerendered.
  */
 export function ChallengeBanner() {
   // Resolved on the client so a stale prerender can never show yesterday's.
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [conditions, setConditions] = useState<string | null>(null);
   useEffect(() => {
     setChallenge(todayChallenge());
+    const sync = () => setConditions(weatherAt(Date.now()).label);
+    sync();
+    const id = setInterval(sync, 30_000); // weather drifts every few minutes
+    return () => clearInterval(id);
   }, []);
 
   return (
@@ -31,7 +36,7 @@ export function ChallengeBanner() {
       </p>
       <p className="text-sm text-[var(--ink-soft)]">
         <span className="font-bold text-[var(--ink)]">🌊 Conditions:</span>{" "}
-        {GAME_WEATHER.label} — same seas for everyone, new at 00:00 UTC
+        {conditions ?? "reading the sea…"} — live weather, same seas for everyone
       </p>
     </div>
   );
