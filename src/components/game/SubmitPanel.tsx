@@ -59,7 +59,11 @@ export function SubmitPanel({
     if (res.ok) {
       setStatus({ kind: "done", rank: res.rank, challengeBonus: res.challengeBonus });
     } else {
-      setStatus({ kind: "form", error: res.error });
+      // A burned/expired token can't be retried — point at the only way out.
+      const error = /token/i.test(res.error)
+        ? "This run can't be verified anymore — hit Launch again and the next one will count."
+        : res.error;
+      setStatus({ kind: "form", error });
     }
   };
 

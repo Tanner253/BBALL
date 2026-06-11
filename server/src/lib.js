@@ -20,10 +20,11 @@ export const LIMITS = {
   maxSkips: 5000,
   maxCombo: 1000,
   nameMax: 18,
-  /** Max plausible average horizontal speed (m/s), generous headroom.
-   *  Space runs ride thin air + maxed upgrades + boost chains, so a 100k+
-   *  run is legit as long as it took at least distance/260 seconds. */
-  maxAvgSpeed: 260,
+  /** Max plausible average horizontal speed (m/s). Real runs have peaked
+   *  at 369 m/s (1,328 km/h) with boost chains in thin air, so the average
+   *  cap sits well above that. Still blocks instant-submit cheats: a 100k
+   *  claim must be at least ~3.7 minutes old. */
+  maxAvgSpeed: 450,
 };
 
 /**
