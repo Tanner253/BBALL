@@ -191,7 +191,7 @@ function DistanceList({ board }: { board: Leaderboard }) {
           name={s.name}
           wallet={s.wallet}
           badge={i < 3 ? `${formatK(payouts[i] ?? 0)} $BBALL` : undefined}
-          value={`${s.distance}m`}
+          value={`${s.distance.toLocaleString("en-US")}m`}
         />
       ))}
     </ol>
@@ -296,7 +296,9 @@ function PayoutsList({ winners }: { winners: Winners | null }) {
               <div key={wn.wallet} className="flex items-center gap-2 text-xs min-w-0">
                 <span aria-hidden>{MEDALS[i]}</span>
                 <span className="font-medium text-[var(--ink)] truncate">{wn.name}</span>
-                <span className="text-[var(--ink-soft)] whitespace-nowrap">{wn.distance}m</span>
+                <span className="text-[var(--ink-soft)] whitespace-nowrap">
+                  {wn.distance.toLocaleString("en-US")}m
+                </span>
                 <span className="font-mono text-[10px] font-bold text-[var(--ink-soft)] whitespace-nowrap">
                   {formatK(winners.payouts[i] ?? 0)} $BBALL →
                 </span>

@@ -15,14 +15,15 @@ export const COINS_PAYOUT = 50000;
 
 /** Hard sanity caps — anything beyond these is a rejected run. */
 export const LIMITS = {
-  maxDistance: 50000, // meters
-  maxCoins: 5000,
-  maxSkips: 2000,
-  maxCombo: 500,
+  maxDistance: 1_000_000, // meters — god runs welcome, teleports not
+  maxCoins: 25000,
+  maxSkips: 5000,
+  maxCombo: 1000,
   nameMax: 18,
   /** Max plausible average horizontal speed (m/s), generous headroom.
-   *  Space runs ride thin air + maxed upgrades, so this is roomy. */
-  maxAvgSpeed: 150,
+   *  Space runs ride thin air + maxed upgrades + boost chains, so a 100k+
+   *  run is legit as long as it took at least distance/260 seconds. */
+  maxAvgSpeed: 260,
 };
 
 /**

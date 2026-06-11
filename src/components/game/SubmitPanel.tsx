@@ -70,7 +70,7 @@ export function SubmitPanel({
           flight over
         </p>
         <p className="mt-1 text-display text-5xl font-extrabold text-[var(--ink)] tabular-nums">
-          {result.distance}m
+          {result.distance.toLocaleString("en-US")}m
         </p>
 
         <div className="mt-4 grid grid-cols-4 gap-2 text-center">

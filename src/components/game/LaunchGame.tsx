@@ -148,7 +148,7 @@ export function LaunchGame() {
 
       // HUD writes.
       if (distRef.current) {
-        distRef.current.textContent = `${Math.round(s.distance)}m`;
+        distRef.current.textContent = `${Math.round(s.distance).toLocaleString("en-US")}m`;
       }
       if (statsRef.current) {
         const speed = Math.round(Math.hypot(s.ball.vx, s.ball.vy) * 3.6);
