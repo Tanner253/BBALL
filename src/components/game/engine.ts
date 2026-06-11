@@ -58,6 +58,8 @@ export type GameState = {
   /** Aim sweep speed multiplier; randomized per charge session. */
   aimRate: number;
   holding: boolean;
+  /** Seconds the current hold has lasted (0 when released). */
+  holdTime: number;
   distance: number;
   skips: number;
   combo: number;
@@ -180,9 +182,11 @@ const SPACE_ALT = 100;
 
 const DIVE_ACCEL = 52;
 const AIR_DRAG = 0.038;
-/** Extra horizontal drag while holding — diving is a skill tool with a real
- *  cost: hold too long and the ball bleeds out and stops. */
-const HOLD_DRAG = 0.55;
+/** Horizontal drag for SUSTAINED holds. Quick timed dives are free — only
+ *  riding the brake non-stop bleeds speed until the ball stops. */
+const HOLD_DRAG = 0.7;
+/** Seconds of continuous holding before the drag starts to bite. */
+const HOLD_DRAG_AFTER = 8;
 const MAX_DUNK_DEPTH = 3.0; // visual depth while charging (m)
 const MIN_SKIP_SPEED = 7;
 const SETTLE_SPEED = 0.6;
@@ -201,6 +205,7 @@ export function createInitialState(mods: Mods = DEFAULT_MODS): GameState {
     aimPhase: 0,
     aimRate: 1,
     holding: false,
+    holdTime: 0,
     distance: 0,
     skips: 0,
     combo: 0,
@@ -276,6 +281,7 @@ export function step(s: GameState, dt: number, holding: boolean) {
   updateWeather();
   s.t += dt;
   s.holding = holding;
+  s.holdTime = holding ? s.holdTime + dt : 0;
   s.perfectFlash = Math.max(0, s.perfectFlash - dt);
   s.shake = Math.max(0, s.shake - dt);
 
@@ -335,8 +341,10 @@ function stepFlying(s: GameState, dt: number, holding: boolean) {
   b.vy -= GRAVITY * dt;
   if (holding && b.y > waveHeight(b.x, s.t) + BALL_R) {
     b.vy -= DIVE_ACCEL * dt;
-    // Tucking in is a brake: release on the way up to keep your speed.
-    b.vx *= Math.exp(-HOLD_DRAG * dt);
+    // Timed dives are free; CONSTANT holding turns into a brake that ramps
+    // in after HOLD_DRAG_AFTER seconds and eventually stops the ball.
+    const over = s.holdTime - HOLD_DRAG_AFTER;
+    if (over > 0) b.vx *= Math.exp(-HOLD_DRAG * Math.min(1, over / 2) * dt);
   }
 
   // Weather never touches the ball directly — it only shapes the waves.
@@ -458,12 +466,12 @@ function handleWaterContact(s: GameState, surface: number) {
     // (boosted flight makes most landings steep, so this is where combos
     // actually live); held slams outside a dip just bury the ball.
     const perfect = s.holding && dip;
-    const base = perfect ? 0.95 : dip ? 0.77 : s.holding ? 0.42 : 0.55;
+    const base = perfect ? 0.87 : dip ? 0.77 : s.holding ? 0.42 : 0.55;
     b.y = surface + 0.02;
     // Same rule as skips: only PERFECTs can come back with interest.
     const rest = base + 0.18 * downhill + s.mods.skipBounce * 0.9;
     b.vy = Math.abs(b.vy) * (perfect ? rest : Math.min(rest, 0.88));
-    if (perfect) b.vy = Math.min(b.vy, 38); // no infinite pogo to space
+    if (perfect) b.vy = Math.min(b.vy, 34); // no infinite pogo to space
     // Downhill faces convert some of the slam into forward roll.
     b.vx = Math.max(
       0.5,
