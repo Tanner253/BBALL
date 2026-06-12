@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isValidSolWallet, submitScore } from "@/lib/api";
 import { loadPlayer, loadPlayerKey, savePlayer } from "@/lib/player";
 
@@ -31,7 +31,7 @@ export function SubmitPanel({
   const [player, setPlayer] = useState(() => loadPlayer());
   const [status, setStatus] = useState<Status>({ kind: "form" });
 
-  const submit = async () => {
+  const submit = useCallback(async () => {
     const name = player.name.trim().slice(0, 18);
     const wallet = player.wallet.trim();
     if (!name) return setStatus({ kind: "form", error: "Enter a name." });
@@ -65,7 +65,19 @@ export function SubmitPanel({
         : res.error;
       setStatus({ kind: "form", error });
     }
-  };
+  }, [player, runToken, result]);
+
+  // Returning players bank automatically: with a saved name + wallet the run
+  // (and its coins) submits itself, so the shop balance accrues every run.
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (autoRef.current) return;
+    autoRef.current = true;
+    const p = loadPlayer();
+    if (p.name.trim() && isValidSolWallet(p.wallet.trim()) && runToken) {
+      void submit();
+    }
+  }, [submit, runToken]);
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center p-4 meme-preview-fade">
@@ -111,6 +123,9 @@ export function SubmitPanel({
             >
               {status.kind === "submitting" ? "Submitting…" : "Submit to global leaderboard"}
             </button>
+            <p className="text-[10px] text-[var(--ink-mute)]">
+              Submit once and every future run auto-banks its coins for the shop.
+            </p>
           </div>
         ) : (
           <div className="mt-5">
@@ -122,6 +137,12 @@ export function SubmitPanel({
             {status.challengeBonus > 0 && (
               <p className="mt-1 text-xs font-bold text-[#2c9c5e]">
                 🎯 Daily challenge complete — +{status.challengeBonus} bonus coins banked!
+              </p>
+            )}
+            {result.coins > 0 && (
+              <p className="mt-1 text-xs font-bold text-[#8a6d00]">
+                💰 ${result.coins} banked to today&apos;s balance — spend it in the Upgrades
+                shop.
               </p>
             )}
             <p className="mt-1 text-xs text-[var(--ink-soft)]">

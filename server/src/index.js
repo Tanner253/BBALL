@@ -63,7 +63,8 @@ app.use(
 
 const readLimiter = rateLimit({ windowMs: 60_000, limit: 120 });
 const runLimiter = rateLimit({ windowMs: 600_000, limit: 80 });
-const scoreLimiter = rateLimit({ windowMs: 600_000, limit: 30 });
+// Roomy enough for auto-banked runs (clients submit every run now).
+const scoreLimiter = rateLimit({ windowMs: 600_000, limit: 60 });
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
