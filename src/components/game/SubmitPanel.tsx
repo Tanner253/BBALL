@@ -38,7 +38,7 @@ export function SubmitPanel({
     if (!isValidSolWallet(wallet)) {
       return setStatus({
         kind: "form",
-        error: "Enter a valid Solana wallet — that's where $BBALL rewards go.",
+        error: "Enter a valid Solana wallet — ties your runs to one identity.",
       });
     }
     if (!runToken) {
@@ -108,7 +108,7 @@ export function SubmitPanel({
             <input
               value={player.wallet}
               onChange={(e) => setPlayer((p) => ({ ...p, wallet: e.target.value }))}
-              placeholder="Solana wallet (for $BBALL rewards)"
+              placeholder="Solana wallet (your player ID)"
               spellCheck={false}
               className="w-full rounded-full border border-black/10 bg-white/80 px-4 py-2.5 text-sm font-mono text-[var(--ink)] placeholder:font-sans placeholder:text-[var(--ink-mute)] focus:outline-none"
             />
@@ -131,7 +131,7 @@ export function SubmitPanel({
           <div className="mt-5">
             <p className="text-sm font-medium text-[var(--ink)]">
               {status.rank <= 3
-                ? `#${status.rank} globally right now — that's payout territory! 🏆`
+                ? `#${status.rank} globally right now — podium! 🏆`
                 : `#${status.rank} on today's global leaderboard.`}
             </p>
             {status.challengeBonus > 0 && (
@@ -146,7 +146,7 @@ export function SubmitPanel({
               </p>
             )}
             <p className="mt-1 text-xs text-[var(--ink-soft)]">
-              Hold a top-3 spot when the cycle ends and $BBALL lands in your wallet.
+              Hold a top spot when the cycle ends to stay on the board.
             </p>
           </div>
         )}
@@ -157,8 +157,8 @@ export function SubmitPanel({
           </button>
         </div>
         <p className="mt-3 text-[10px] text-[var(--ink-mute)]">
-          Distance: top 3 daily earn 100k / 50k / 25k $BBALL. Coins: top collector every 48h
-          gets paid too. Manual payouts by the dev within 24h of cycle end.
+          Distance board resets daily. Coins board resets every 48h. Wallet is your player
+          ID — one identity per device.
         </p>
       </div>
     </div>

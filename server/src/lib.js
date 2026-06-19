@@ -1,17 +1,10 @@
 /**
  * Shared helpers for the bball-api: Mongo connection, daily cycle math,
- * payout table, and score validation/anti-cheat plausibility checks.
+ * and score validation/anti-cheat plausibility checks.
  */
 
 import crypto from "node:crypto";
 import { MongoClient } from "mongodb";
-
-/** $BBALL paid to the top 3 distance runners of each 24h cycle (manual). */
-export const PAYOUTS = [100000, 50000, 25000];
-
-/** $BBALL paid to the single top coin collector of each 48h coin cycle.
- *  TODO(owner): confirm the amount — placeholder until then. */
-export const COINS_PAYOUT = 50000;
 
 /** Hard sanity caps — anything beyond these is a rejected run. */
 export const LIMITS = {
@@ -113,7 +106,7 @@ export async function getDb() {
   return clientPromise;
 }
 
-/** Cycles are UTC days: "2026-06-11". Payouts reference these ids. */
+/** Cycles are UTC days: "2026-06-11". Leaderboards reference these ids. */
 export function currentCycleId(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }

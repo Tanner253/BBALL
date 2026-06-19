@@ -138,7 +138,7 @@ function SignInForm({
   const save = () => {
     if (!name.trim()) return setError("Enter a name.");
     if (!isValidSolWallet(wallet.trim())) {
-      return setError("Enter a valid Solana wallet — same one your rewards go to.");
+      return setError("Enter a valid Solana wallet — same one you use for the leaderboard.");
     }
     savePlayer(name.trim(), wallet.trim());
     setError(null);

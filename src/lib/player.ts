@@ -1,4 +1,4 @@
-/** Persisted player identity (display name + SOL payout wallet), local only. */
+/** Persisted player identity (display name + wallet), local only. */
 
 const NAME_KEY = "bball:game:name";
 const WALLET_KEY = "bball:game:wallet";

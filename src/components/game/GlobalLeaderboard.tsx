@@ -3,24 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchLeaderboard,
-  fetchWinners,
   shortWallet,
   SCORES_EVENT,
   type Leaderboard,
-  type Winners,
 } from "@/lib/api";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-function formatK(n: number): string {
-  return n >= 1000 ? `${n / 1000}k` : String(n);
-}
-
-type Tab = "distance" | "coins" | "payouts";
+type Tab = "distance" | "coins";
 
 export function GlobalLeaderboard() {
   const [board, setBoard] = useState<Leaderboard | null>(null);
-  const [winners, setWinners] = useState<Winners | null>(null);
   const [failed, setFailed] = useState(false);
   const [tab, setTab] = useState<Tab>("distance");
   const [now, setNow] = useState(() => Date.now());
@@ -30,7 +23,6 @@ export function GlobalLeaderboard() {
       setBoard(lb);
       setFailed(lb === null);
     });
-    fetchWinners().then(setWinners);
   }, []);
 
   useEffect(() => {
@@ -45,7 +37,7 @@ export function GlobalLeaderboard() {
     };
   }, [refresh]);
 
-  const active = board && tab !== "payouts" ? board[tab] : null;
+  const active = board ? board[tab] : null;
   const remaining = active ? Math.max(0, new Date(active.endsAt).getTime() - now) : 0;
 
   return (
@@ -57,14 +49,13 @@ export function GlobalLeaderboard() {
         {active && (
           <span
             className="font-mono text-[10px] uppercase tracking-[0.18em] rounded-full px-2.5 py-1 bg-[var(--ball-yellow)]/70 text-[var(--ink)] tabular-nums"
-            title="Time until payouts lock"
+            title="Time until this cycle resets"
           >
             resets in {formatCountdown(remaining)}
           </span>
         )}
       </div>
 
-      {/* Tabs */}
       <div className="mt-3 flex gap-1.5 flex-wrap">
         <TabButton active={tab === "distance"} onClick={() => setTab("distance")}>
           🚀 Distance
@@ -72,19 +63,13 @@ export function GlobalLeaderboard() {
         <TabButton active={tab === "coins"} onClick={() => setTab("coins")}>
           💰 Coins
         </TabButton>
-        <TabButton active={tab === "payouts"} onClick={() => setTab("payouts")}>
-          🏆 Payouts
-        </TabButton>
       </div>
 
-      {/* Fixed-height scroll area so the panel never stretches the page. */}
       <div className="mt-4 max-h-[320px] overflow-y-auto overscroll-contain pr-1">
         {failed ? (
           <p className="text-sm text-[var(--ink-soft)]">
             Leaderboard is waking up — give it a moment and it&rsquo;ll be here.
           </p>
-        ) : tab === "payouts" ? (
-          <PayoutsList winners={winners} />
         ) : !board ? (
           <p className="text-sm text-[var(--ink-soft)]">Loading standings…</p>
         ) : tab === "distance" ? (
@@ -97,25 +82,14 @@ export function GlobalLeaderboard() {
       <p className="mt-4 text-xs leading-relaxed text-[var(--ink-mute)]">
         {tab === "distance" ? (
           <>
-            Top 3 distance when the daily cycle ends (00:00 UTC) get{" "}
-            <span className="font-semibold text-[var(--ink-soft)]">100k / 50k / 25k $BBALL</span>.
-            Paid manually by the dev to your submitted wallet.
-          </>
-        ) : tab === "coins" ? (
-          <>
-            Most <span className="font-semibold text-[var(--ink-soft)]">net coins</span>{" "}
-            (collected − spent on upgrades) across the 48h cycle wins{" "}
-            <span className="font-semibold text-[var(--ink-soft)]">
-              {board ? formatK(board.coins.payout) : "—"} $BBALL
-            </span>{" "}
-            (one winner every other day). Paid manually by the dev.
+            Best single run per wallet. Board resets daily at{" "}
+            <span className="font-semibold text-[var(--ink-soft)]">00:00 UTC</span>.
           </>
         ) : (
           <>
-            Winners are paid manually{" "}
-            <span className="font-semibold text-[var(--ink-soft)]">within 24 hours</span> of the
-            cycle ending — paid cycles get the ✅.{" "}
-            <span className="font-semibold text-[var(--ink-soft)]">Tap a wallet to copy it</span>.
+            Most <span className="font-semibold text-[var(--ink-soft)]">net coins</span>{" "}
+            (collected − spent on upgrades) across the 48h cycle. One board, resets every
+            other day.
           </>
         )}
       </p>
@@ -147,7 +121,6 @@ function TabButton({
   );
 }
 
-/** Wallet chip that copies the full address on click. */
 function WalletChip({ wallet }: { wallet: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -176,11 +149,11 @@ function WalletChip({ wallet }: { wallet: string }) {
 }
 
 function DistanceList({ board }: { board: Leaderboard }) {
-  const { top, payouts } = board.distance;
+  const { top } = board.distance;
   if (top.length === 0) {
     return (
       <p className="text-sm text-[var(--ink-soft)]">
-        Nobody has launched today. 100k $BBALL is sitting right there.
+        Nobody has launched today. The board is wide open.
       </p>
     );
   }
@@ -192,7 +165,7 @@ function DistanceList({ board }: { board: Leaderboard }) {
           rank={i}
           name={s.name}
           wallet={s.wallet}
-          badge={i < 3 ? `${formatK(payouts[i] ?? 0)} $BBALL` : undefined}
+          highlight={i < 3}
           value={`${s.distance.toLocaleString("en-US")}m`}
         />
       ))}
@@ -201,11 +174,11 @@ function DistanceList({ board }: { board: Leaderboard }) {
 }
 
 function CoinsList({ board }: { board: Leaderboard }) {
-  const { top, payout } = board.coins;
+  const { top } = board.coins;
   if (top.length === 0) {
     return (
       <p className="text-sm text-[var(--ink-soft)]">
-        No coins collected this cycle yet. Free {formatK(payout)} $BBALL for the first grinder.
+        No coins collected this cycle yet. First one on the board wins bragging rights.
       </p>
     );
   }
@@ -218,7 +191,7 @@ function CoinsList({ board }: { board: Leaderboard }) {
           name={s.name}
           wallet={s.wallet}
           sub={`${s.runs} runs`}
-          badge={i === 0 ? `${formatK(payout)} $BBALL` : undefined}
+          highlight={i === 0}
           value={`$${s.coins}`}
         />
       ))}
@@ -232,19 +205,19 @@ function Row({
   wallet,
   value,
   sub,
-  badge,
+  highlight,
 }: {
   rank: number;
   name: string;
   wallet: string;
   value: string;
   sub?: string;
-  badge?: string;
+  highlight?: boolean;
 }) {
   return (
     <li
       className={`flex items-center gap-3 rounded-2xl border px-3.5 py-2 ${
-        badge
+        highlight
           ? "bg-[var(--ball-yellow)]/25 border-[var(--ball-yellow)]/60"
           : "bg-white/55 border-white/70"
       }`}
@@ -261,87 +234,8 @@ function Row({
           )}
         </span>
       </span>
-      {badge && (
-        <span className="font-mono text-[10px] font-bold rounded-full px-2 py-0.5 bg-[var(--ball-yellow)] text-[var(--ink)] whitespace-nowrap">
-          {badge}
-        </span>
-      )}
       <span className="font-bold tabular-nums text-[var(--ink)]">{value}</span>
     </li>
-  );
-}
-
-/** Past cycle winners awaiting their manual $BBALL payout. */
-function PayoutsList({ winners }: { winners: Winners | null }) {
-  if (!winners) {
-    return <p className="text-sm text-[var(--ink-soft)]">Loading payout queue…</p>;
-  }
-  if (winners.distance.length === 0 && winners.coins.length === 0) {
-    return (
-      <p className="text-sm text-[var(--ink-soft)]">
-        No finished cycles yet — winners land here when the clock rolls over.
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      {winners.distance.map((c) => (
-        <div
-          key={`d-${c.cycleId}`}
-          className="rounded-2xl bg-white/45 border border-white/60 px-3 py-2"
-        >
-          <p className="font-mono text-[10px] text-[var(--ink-mute)] flex items-center gap-2">
-            🚀 {c.cycleId} · distance <PaidBadge paid={c.paid} />
-          </p>
-          <div className="mt-1 flex flex-col gap-1">
-            {c.top.map((wn, i) => (
-              <div key={wn.wallet} className="flex items-center gap-2 text-xs min-w-0">
-                <span aria-hidden>{MEDALS[i]}</span>
-                <span className="font-medium text-[var(--ink)] truncate">{wn.name}</span>
-                <span className="text-[var(--ink-soft)] whitespace-nowrap">
-                  {wn.distance.toLocaleString("en-US")}m
-                </span>
-                <span className="font-mono text-[10px] font-bold text-[var(--ink-soft)] whitespace-nowrap">
-                  {formatK(winners.payouts[i] ?? 0)} $BBALL →
-                </span>
-                <WalletChip wallet={wn.wallet} />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-      {winners.coins.map((c) => (
-        <div
-          key={`c-${c.cycleId}`}
-          className="rounded-2xl bg-white/45 border border-white/60 px-3 py-2"
-        >
-          <p className="font-mono text-[10px] text-[var(--ink-mute)] flex items-center gap-2">
-            💰 {c.cycleId} · coins <PaidBadge paid={c.paid} />
-          </p>
-          <div className="mt-1 flex items-center gap-2 text-xs min-w-0">
-            <span aria-hidden>🥇</span>
-            <span className="font-medium text-[var(--ink)] truncate">{c.winner.name}</span>
-            <span className="text-[var(--ink-soft)] whitespace-nowrap">${c.winner.coins}</span>
-            <span className="font-mono text-[10px] font-bold text-[var(--ink-soft)] whitespace-nowrap">
-              {formatK(winners.coinsPayout)} $BBALL →
-            </span>
-            <WalletChip wallet={c.winner.wallet} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PaidBadge({ paid }: { paid: boolean }) {
-  return paid ? (
-    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-[#2c9c5e]/15 text-[#1f7a47]">
-      ✅ paid
-    </span>
-  ) : (
-    <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-[var(--ball-yellow)]/30 text-[#8a6d00]">
-      ⏳ pending · within 24h
-    </span>
   );
 }
 
@@ -352,6 +246,5 @@ function formatCountdown(ms: number): string {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  // 48h coin cycles can have more than a day left — show it explicitly.
   return d > 0 ? `${d}d ${hms}` : hms;
 }

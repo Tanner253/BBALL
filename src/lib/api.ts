@@ -35,23 +35,8 @@ export type CoinsEntry = {
 };
 
 export type Leaderboard = {
-  distance: { cycleId: string; endsAt: string; payouts: number[]; top: DistanceEntry[] };
-  coins: { cycleId: string; endsAt: string; payout: number; top: CoinsEntry[] };
-};
-
-export type Winners = {
-  payouts: number[];
-  coinsPayout: number;
-  distance: {
-    cycleId: string;
-    paid: boolean;
-    top: { name: string; wallet: string; distance: number }[];
-  }[];
-  coins: {
-    cycleId: string;
-    paid: boolean;
-    winner: { name: string; wallet: string; coins: number };
-  }[];
+  distance: { cycleId: string; endsAt: string; top: DistanceEntry[] };
+  coins: { cycleId: string; endsAt: string; top: CoinsEntry[] };
 };
 
 export type ScoreSubmission = {
@@ -163,15 +148,5 @@ export async function buyUpgrade(payload: {
     return { ok: false, error: data?.error ?? `purchase failed (${res.status})` };
   } catch {
     return { ok: false, error: "network error — is the leaderboard reachable?" };
-  }
-}
-
-export async function fetchWinners(): Promise<Winners | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/winners`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
   }
 }

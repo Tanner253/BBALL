@@ -58,45 +58,7 @@ export default function GamePage() {
 
           <GlobalLeaderboard />
         </div>
-
-        <section className="mt-12 glass rounded-3xl p-6 sm:p-8 text-center">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[var(--ink-mute)]">
-            play to earn — live
-          </p>
-          <h2 className="mt-2 text-display text-2xl sm:text-3xl font-bold text-[var(--ink)]">
-            Top of the global board ={" "}
-            <span className="shimmer-text">$BBALL in your wallet.</span>
-          </h2>
-          <p className="mt-3 text-sm sm:text-base text-[var(--ink-soft)] max-w-2xl mx-auto">
-            Two competitions, two clocks. Distance resets daily (00:00 UTC); coins run on a
-            48h cycle with a single winner:
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Payout place="🥇 1st distance" amount="100,000" />
-            <Payout place="🥈 2nd distance" amount="50,000" />
-            <Payout place="🥉 3rd distance" amount="25,000" />
-            <Payout place="💰 coin champ (48h)" amount="50,000" />
-          </div>
-          <p className="mt-5 text-xs sm:text-sm text-[var(--ink-mute)] max-w-2xl mx-auto">
-            Distance counts your single best run per wallet; coins count your total collected
-            across every submitted run in the cycle, minus anything you spend on daily
-            upgrades. Rewards are sent manually by the dev to the Solana wallet you submit
-            with your score — allow up to 24 hours after the cycle ends. Paid cycles are
-            marked ✅ in the Payouts tab. No wallet connect, no signatures, ever.
-          </p>
-        </section>
       </div>
-    </div>
-  );
-}
-
-function Payout({ place, amount }: { place: string; amount: string }) {
-  return (
-    <div className="rounded-2xl bg-white/60 border border-[var(--ball-yellow)]/60 px-5 py-3">
-      <p className="text-sm font-semibold text-[var(--ink)]">{place}</p>
-      <p className="text-display text-xl font-extrabold text-[var(--ink)] tabular-nums">
-        {amount} <span className="text-xs font-bold text-[var(--ink-soft)]">$BBALL</span>
-      </p>
     </div>
   );
 }
